@@ -1,0 +1,22 @@
+.card {
+    display: inline-block;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 0.5rem;
+    background: white;
+    width: 60px;
+    height: 90px;
+    font-size: 1.2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  
+  .card-label {
+    font-weight: bold;
+  }
+  
+  .card-suit {
+    display: block;
+    font-size: 1.5rem;
+  }
+  

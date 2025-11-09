@@ -1,0 +1,26 @@
+card-counting-trainer/
+│
+├── client/                      # React frontend
+│   ├── public/
+│   └── src/
+│       ├── components/
+│       │   ├── Card.jsx
+│       │   ├── Hand.jsx
+│       │   ├── Controls.jsx
+│       │   └── CounterDisplay.jsx
+│       ├── utils/
+│       │   └── deckUtils.js     # shuffling, dealing, card values
+│       ├── App.jsx
+│       └── index.js
+│
+├── server/                      # Express backend
+│   ├── models/
+│   │   └── GameSession.js       # Mongoose schema
+│   ├── routes/
+│   │   └── gameRoutes.js
+│   ├── server.js                # Entry point
+│   └── .env                     # Mongo URI
+│
+├── .gitignore
+├── package.json
+└── README.md

@@ -1,0 +1,21 @@
+.app {
+    font-family: sans-serif;
+    text-align: center;
+    padding: 2rem;
+    background: #f1f1f1;
+    min-height: 100vh;
+  }
+  
+  .game-area {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 2rem;
+  }
+  
+  .hand-container {
+    background: white;
+    padding: 1rem;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    width: 40%;
+  }

@@ -1,0 +1,57 @@
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+/* .controls button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: rgb(181, 50, 42);
+  color: white;
+  font-size: 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+} */
+
+.controls button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: linear-gradient(to bottom, #e06666, #a80000); /* Gradient red */
+  color: white;
+  font-size: 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+
+  /* Gloss effect */
+  position: relative;
+  overflow: hidden;
+}
+
+.controls button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.3),
+    rgba(255, 255, 255, 0)
+  );
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  pointer-events: none;
+}
+
+.controls button:hover {
+  background: #555;
+}
+
+.controls button:active {
+  box-shadow: 7px 6px 28px 1px rgba(0, 0, 0, 0.24);
+  transform: translateY(4px);
+  /* Moving button 4px to y-axis */
+}

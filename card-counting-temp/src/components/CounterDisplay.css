@@ -1,0 +1,8 @@
+.counter-display {
+  margin-top: 1rem;
+  font-size: 1.2rem;
+}
+
+.counter-display h3 {
+  opacity: 0.33;
+}
