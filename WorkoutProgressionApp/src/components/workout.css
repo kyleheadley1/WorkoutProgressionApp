@@ -236,11 +236,253 @@ h2 {
   min-height: calc(100vh - 200px);
 }
 
+.exercise-history {
+  background: #f8f9fa;
+  min-height: calc(100vh - 200px);
+}
+
 .history-container h2 {
   margin: 0 0 20px 0;
   font-size: 22px;
   font-weight: 700;
   color: #1a1d29;
+}
+
+/* Exercise History Styles */
+.exercise-history {
+  padding: 0;
+}
+
+.exercise-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  background: linear-gradient(135deg, #1a1d29 0%, #2d3142 100%);
+  color: white;
+  margin-bottom: 0;
+}
+
+.back-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.exercise-history-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: white;
+  flex: 1;
+  text-align: center;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 8px;
+  padding: 16px 32px;
+  background: #1a1d29;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  background: white;
+  color: #1a1d29;
+}
+
+.toggle-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.results-view,
+.trends-view {
+  padding: 24px 32px;
+  background: #f8f9fa;
+  min-height: calc(100vh - 200px);
+}
+
+.workout-entry {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.workout-date-header h2 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1d29;
+}
+
+.sets-section {
+  margin-bottom: 16px;
+}
+
+.sets-section-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.set-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 10px;
+}
+
+.set-number {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ff4d61;
+  color: white;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.set-details {
+  font-size: 14px;
+  color: #1a1d29;
+  font-weight: 500;
+}
+
+.e1rm-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f0f7ff;
+  border-radius: 10px;
+  margin-top: 16px;
+}
+
+.e1rm-icon {
+  font-size: 20px;
+}
+
+.e1rm-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.e1rm-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.e1rm-value {
+  font-size: 16px;
+  color: #1a1d29;
+  font-weight: 700;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.trends-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.trend-card {
+  background: linear-gradient(135deg, #1a1d29 0%, #2d3142 100%);
+  border-radius: 16px;
+  padding: 20px;
+  color: white;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.trend-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.trend-header h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.trend-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 4px;
+}
+
+.trend-timestamp {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.trend-arrow {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.trend-chart {
+  margin-top: 16px;
 }
 
 /* src/components/workout.css — add these at bottom */
@@ -291,6 +533,24 @@ h2 {
   color: #1a1d29;
 }
 
+.history-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  color: #666;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.history-btn:hover {
+  border-color: #ff4d61;
+  color: #ff4d61;
+  background: #fff5f6;
+}
+
 .recommend-strip {
   display: flex;
   flex-wrap: wrap;
@@ -334,7 +594,7 @@ h2 {
 
 .set-row {
   display: grid;
-  grid-template-columns: 40px 1fr 1fr 1fr 100px;
+  grid-template-columns: 40px 1fr 1fr 100px;
   gap: 12px;
   align-items: end;
   padding: 12px 0;
@@ -361,6 +621,27 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.warmup-badge {
+  font-size: 10px;
+  background: #ffa500;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.set-row.warmup-set {
+  opacity: 0.85;
+}
+
+.set-row.warmup-set:hover {
+  opacity: 1;
 }
 
 .set-cell {

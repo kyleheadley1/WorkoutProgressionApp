@@ -1,8 +1,7 @@
 import { ToastProvider } from './components/ToastProvider.jsx';
 // top
 import Progress from './components/progress/Progress.jsx';
-import History from './components/History.jsx';
-// state near top of App()
+import ExerciseHistory from './components/ExerciseHistory.jsx';
 
 import { syncLocalToServer } from './lib/sync'; // we created this earlier
 
@@ -22,7 +21,8 @@ function Rest() {
 export default function App() {
   const [override, setOverride] = useState(null); // 'push' | 'pull' | 'legs' | 'upper' | 'lower' | 'full' | null
   const [dayType, setDayType] = useState(null);
-  const [view, setView] = useState('today'); // 'today' | 'history' | 'progress'
+  const [view, setView] = useState('today'); // 'today' | 'progress'
+  const [exerciseHistory, setExerciseHistory] = useState(null); // { exerciseId, name } | null
 
   const userId = 'demoUser';
 
@@ -35,11 +35,32 @@ export default function App() {
   function renderByType(t) {
     switch (t) {
       case 'push':
-        return <Push userId={userId} />;
+        return (
+          <Push
+            userId={userId}
+            onViewHistory={(id, name) =>
+              setExerciseHistory({ exerciseId: id, name })
+            }
+          />
+        );
       case 'pull':
-        return <Pull userId={userId} />;
+        return (
+          <Pull
+            userId={userId}
+            onViewHistory={(id, name) =>
+              setExerciseHistory({ exerciseId: id, name })
+            }
+          />
+        );
       case 'legs':
-        return <Legs userId={userId} />;
+        return (
+          <Legs
+            userId={userId}
+            onViewHistory={(id, name) =>
+              setExerciseHistory({ exerciseId: id, name })
+            }
+          />
+        );
       case 'upper':
         return (
           <div>
@@ -76,19 +97,19 @@ export default function App() {
           <nav className='view-nav'>
             <button
               className={`nav-btn ${view === 'today' ? 'active' : ''}`}
-              onClick={() => setView('today')}
+              onClick={() => {
+                setView('today');
+                setExerciseHistory(null);
+              }}
             >
               Today
             </button>
             <button
-              className={`nav-btn ${view === 'history' ? 'active' : ''}`}
-              onClick={() => setView('history')}
-            >
-              History
-            </button>
-            <button
               className={`nav-btn ${view === 'progress' ? 'active' : ''}`}
-              onClick={() => setView('progress')}
+              onClick={() => {
+                setView('progress');
+                setExerciseHistory(null);
+              }}
             >
               Progress
             </button>
@@ -130,7 +151,20 @@ export default function App() {
             Sync to server
           </button>
         </div>
-        {view === 'today' ? (
+        {exerciseHistory ? (
+          <ExerciseHistory
+            exerciseId={exerciseHistory.exerciseId}
+            exerciseName={exerciseHistory.name}
+            onBack={() => {
+              setExerciseHistory(null);
+              setView('today');
+            }}
+          />
+        ) : view === 'progress' ? (
+          <div className='history-container'>
+            <Progress />
+          </div>
+        ) : (
           <div className='workout-container'>
             <div className='current-workout-container'>
               <h2>Today's Workout</h2>
@@ -148,14 +182,6 @@ export default function App() {
                 coverage &lt; 2 → Full.
               </p>
             </div>
-          </div>
-        ) : view === 'history' ? (
-          <div className='history-container'>
-            <History />
-          </div>
-        ) : (
-          <div className='history-container'>
-            <Progress />
           </div>
         )}
       </div>
