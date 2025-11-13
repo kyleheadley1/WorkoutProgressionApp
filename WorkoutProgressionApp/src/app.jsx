@@ -1,4 +1,8 @@
 import { ToastProvider } from './components/ToastProvider.jsx';
+// top
+import Progress from './components/progress/Progress.jsx';
+import History from './components/History.jsx';
+// state near top of App()
 
 import { syncLocalToServer } from './lib/sync'; // we created this earlier
 
@@ -18,6 +22,7 @@ function Rest() {
 export default function App() {
   const [override, setOverride] = useState(null); // 'push' | 'pull' | 'legs' | 'upper' | 'lower' | 'full' | null
   const [dayType, setDayType] = useState(null);
+  const [view, setView] = useState('today'); // 'today' | 'history' | 'progress'
 
   const userId = 'demoUser';
 
@@ -67,7 +72,12 @@ export default function App() {
     <ToastProvider>
       <div className='app'>
         <h1>Workout App</h1>
-
+        {/* View switcher */}+{' '}
+        <div style={{ display: 'flex', gap: 8, margin: '8px 0 12px' }}>
+          + <button onClick={() => setView('today')}>Today</button>+{' '}
+          <button onClick={() => setView('history')}>History</button>+{' '}
+          <button onClick={() => setView('progress')}>Progress</button>+{' '}
+        </div>
         {/* ✅ INSERT THE DEV PANEL RIGHT BELOW THIS LINE */}
         <div
           style={{
@@ -112,27 +122,45 @@ export default function App() {
           </button>
         </div>
         {/* ✅ END DEV PANEL */}
-
-        <div className='workout-container'>
-          <div className='current-workout-container'>
-            <h2>Today's Workout</h2>
-
-            {dayType === null ? (
-              <div>Loading...</div>
-            ) : (
-              renderByType(dayTypeUsed)
-            )}
-          </div>
-
-          <div className='relevant-stats-container'>
-            <h2>Schedule Logic</h2>
-            <p>
-              Sun = Rest (week resets). Mon/Tue/Wed = Push/Pull/Legs. Thu =
-              Rest. Fri = Upper. Sat = Lower, unless Upper was missed or
-              coverage &lt; 2 → Full.
-            </p>
-          </div>
+        <div style={{ display: 'flex', gap: 8, margin: '8px 0 12px' }}>
+          <button onClick={() => setView('today')}>Today</button>
+          <button onClick={() => setView('history')}>History</button>
+          <button onClick={() => setView('progress')}>Progress</button>
         </div>
+        {view === 'today' ? (
+          <div className='workout-container'>
+            <div className='current-workout-container'>
+              <h2>Today's Workout</h2>
+              {dayType === null ? (
+                <div>Loading...</div>
+              ) : (
+                renderByType(dayTypeUsed)
+              )}
+            </div>
+            <div className='relevant-stats-container'>
+              <h2>Schedule Logic</h2>
+              <p>
+                Sun = Rest (week resets). Mon/Tue/Wed = Push/Pull/Legs. Thu =
+                Rest. Fri = Upper. Sat = Lower, unless Upper was missed or
+                coverage &lt; 2 → Full.
+              </p>
+            </div>
+          </div>
+        ) : view === 'history' ? (
+          <div
+            className='history-container'
+            style={{ background: '#f3f4f5', padding: 24, borderRadius: 16 }}
+          >
+            <History />
+          </div>
+        ) : (
+          <div
+            className='history-container'
+            style={{ background: '#f3f4f5', padding: 24, borderRadius: 16 }}
+          >
+            <Progress />
+          </div>
+        )}
       </div>
     </ToastProvider>
   );

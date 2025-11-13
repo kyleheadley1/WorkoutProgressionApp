@@ -1,4 +1,3 @@
-
 /* src/components/workout.css */
 .app {
   max-width: 900px;
@@ -6,14 +5,166 @@
   padding: 20px;
   font-family: Arial, sans-serif;
 }
-.workout-container { background:#f5f5f5; padding:20px; border-radius: 8px; margin-top: 20px; }
-.current-workout-container { background:white; padding:20px; border-radius: 6px; margin-bottom:20px; }
-h1,h2 { color:#333; }
-.rest-day { text-align:center; font-size:1.5em; padding:20px; }
-.exercise-list { display:grid; gap: 15px; margin-top: 15px; }
-.exercise-item { background:white; padding: 15px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-.exercise-item h4 { margin: 0 0 8px 0; color: #333; }
-.exercise-item p { margin: 0; color: #666; }
-.exercise-item .hint { font-size: 12px; color: #444; margin-top: 6px; }
-.exercise-item input { margin-left: 8px; }
-.exercise-item button { margin-top: 6px; }
+.workout-container {
+  background: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+.current-workout-container {
+  background: white;
+  padding: 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+}
+h1,
+h2 {
+  color: #333;
+}
+.rest-day {
+  text-align: center;
+  font-size: 1.5em;
+  padding: 20px;
+}
+.exercise-list {
+  display: grid;
+  gap: 15px;
+  margin-top: 15px;
+}
+.exercise-item {
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.exercise-item h4 {
+  margin: 0 0 8px 0;
+  color: #333;
+}
+.exercise-item p {
+  margin: 0;
+  color: #666;
+}
+.exercise-item .hint {
+  font-size: 12px;
+  color: #444;
+  margin-top: 6px;
+}
+.exercise-item input {
+  margin-left: 8px;
+}
+.exercise-item button {
+  margin-top: 6px;
+}
+
+/* src/components/workout.css — add these at bottom */
+
+.strong-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.06);
+  margin: 16px 0;
+}
+.strong-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.strong-header .title {
+  font-weight: 700;
+  font-size: 22px;
+}
+.strong-header .howto {
+  color: #888;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.recommend-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  background: #0f1115;
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.recommend-strip .pill {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.recommend-strip .reason {
+  margin-left: auto;
+  opacity: 0.8;
+  font-size: 13px;
+}
+
+.setlist {
+  margin-top: 6px;
+}
+.set-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 1fr 1fr 90px;
+  gap: 10px;
+  align-items: end;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+.set-idx {
+  font-weight: 700;
+  color: #c33;
+}
+.set-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.set-cell label {
+  font-size: 12px;
+  color: #666;
+}
+.set-cell input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.set-cell.e1rm .ghost {
+  padding: 10px;
+  text-align: center;
+  background: #f7f7f9;
+  border-radius: 10px;
+}
+
+.setlist-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding-top: 10px;
+}
+.ghost-btn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+}
+.primary-btn {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #ff4d61;
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+}
+.primary-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
