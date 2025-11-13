@@ -1,8 +1,0 @@
-.deck-display {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-width: 600px;
-  margin: 0 auto;
-  justify-content: center;
-}

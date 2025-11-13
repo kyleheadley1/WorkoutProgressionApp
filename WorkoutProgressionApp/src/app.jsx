@@ -1,53 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import Pull from './components/Pull.jsx';
-import Push from './components/Push.jsx';
-import Legs from './components/Legs.jsx';
-import './components/workout.css'; // Create this file for styles
+
+// src/app.jsx
+import React, { useEffect, useState } from "react";
+import Pull from "./components/Pull";
+import Push from "./components/Push";
+import Legs from "./components/Legs";
+import "./components/workout.css";
+import { seedExample } from "./lib/storage";
+import { recommendDayType } from "./lib/scheduler";
+
+function Rest() {
+  return <div className="rest-day">Rest Day 😴</div>;
+}
 
 export default function App() {
-  const [currentWorkout, setCurrentWorkout] = useState(null);
-  const [currentDay, setCurrentDay] = useState(null);
+  const [dayType, setDayType] = useState(null);
+  const userId = "demoUser";
 
   useEffect(() => {
-    const getWorkoutForDay = () => {
-      const day = new Date().getDay();
-      console.log('Current day:', day);
-      setCurrentDay(day);
+    seedExample(userId);
+    const rec = recommendDayType(userId, new Date());
+    setDayType(rec);
+  }, []);
 
-      switch (day) {
-        case 1:
-          return <Push />; // Monday
-        case 2:
-          return <Pull />; // Tuesday
-        case 3:
-          return <Legs />; // Wednesday
-        case 4:
-          return <Push />; // Thursday
-        case 5:
-          return <Pull />; // Friday
-        case 6:
-          return <Legs />; // Saturday
-        default:
-          return <div className='rest-day'>Rest Day 😴</div>;
-      }
-    };
-
-    console.log('Running useEffect');
-    setCurrentWorkout(getWorkoutForDay());
-  }, []); // End useEffect
+  function renderByType(t) {
+    switch (t) {
+      case "push": return <Push userId={userId} />;
+      case "pull": return <Pull userId={userId} />;
+      case "legs": return <Legs userId={userId} />;
+      case "upper": return <div><h3>Upper Day</h3><p>Program upper-body compounds + accessories.</p></div>;
+      case "lower": return <div><h3>Lower Day</h3><p>Program squats/hinge + accessories.</p></div>;
+      case "full":  return <div><h3>Full Body</h3><p>Blend push, pull, and legs; prioritize weak links.</p></div>;
+      case "rest":
+      default: return <Rest />;
+    }
+  }
 
   return (
-    <div className='app'>
+    <div className="app">
       <h1>Workout App</h1>
-      <div className='workout-container'>
-        <div className='current-workout-container'>
-          <h2>Today's Workout (Day: {currentDay})</h2>
-          {currentWorkout || <div>Loading workout...</div>}
+      <div className="workout-container">
+        <div className="current-workout-container">
+          <h2>Today's Workout</h2>
+          {dayType === null ? <div>Loading...</div> : renderByType(dayType)}
         </div>
-        <div className='relevant-stats-container'>
-          <h2>Stats</h2>
+        <div className="relevant-stats-container">
+          <h2>Schedule Logic</h2>
+          <p>Sun = Rest (week resets). Mon/Tue/Wed = Push/Pull/Legs. Thu = Rest. Fri = Upper. Sat = Lower, unless Upper was missed or coverage &lt; 2 → Full.</p>
         </div>
       </div>
     </div>
   );
-} // End App component
+}
