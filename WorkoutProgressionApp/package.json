@@ -1,18 +1,22 @@
 {
-  "name": "card-counting-temp",
+  "name": "WorkoutProgressionApp",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "Full-stack workout progression tracker (Vite + Express + MongoDB)",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "preview": "vite preview",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "server": "node server/index.js",
+    "dev:server": "nodemon --verbose server/index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "joi": "^18.0.1",
     "mongoose": "^8.17.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -29,9 +33,13 @@
     "nodemon": "^3.1.10",
     "vite": "^6.3.1"
   },
-  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
-  "main": "eslint.config.js",
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "workout",
+    "progression",
+    "react",
+    "vite",
+    "express",
+    "mongodb"
+  ],
   "license": "ISC"
 }

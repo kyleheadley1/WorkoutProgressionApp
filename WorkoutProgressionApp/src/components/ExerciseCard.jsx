@@ -1,62 +1,191 @@
-
 // src/components/ExerciseCard.jsx
-import React, { useMemo, useState } from "react";
-import { saveSession } from "../lib/storage";
+import React, { useMemo, useState } from 'react';
+import { saveSession } from '../lib/storage';
+import { api } from '../lib/api';
+import { enqueueSession } from '../lib/offlineQueue';
+import { useToast } from './ToastProvider';
 
-export default function ExerciseCard({ userId, dayType, def, recommendation, onSaved }) {
-  const { exerciseId, name } = def;
-  const { recommended, reason, meta } = recommendation;
-  const [weight, setWeight] = useState(recommended?.weight ?? 0);
-  const [repsCsv, setRepsCsv] = useState(Array(recommended?.sets || def.repScheme.sets).fill(recommended?.reps ?? (def.repScheme.minReps || def.repScheme.targetReps)).join(","));
-  const [rpeCsv, setRpeCsv] = useState("");
+/**
+ * Map client dayType → server enum for Workout.type
+ */
+function mapDayTypeToServer(dayType) {
+  switch ((dayType || '').toLowerCase()) {
+    case 'push':
+    case 'pull':
+    case 'legs':
+      return dayType.toLowerCase();
+    case 'upper':
+    case 'upper body':
+      return 'Upper Body';
+    case 'lower':
+    case 'lower body':
+      return 'Lower Body';
+    case 'full':
+    case 'full body':
+      return 'Full Body';
+    default:
+      return 'Full Body';
+  }
+}
 
-  const setsCount = recommended?.sets || def.repScheme.sets;
+function parseCsvNumbers(csv, expectedLen) {
+  if (!csv || !csv.trim()) return [];
+  const nums = csv
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((v) => (v === '' ? null : Number(v)));
+  if (Number.isFinite(expectedLen) && expectedLen > 0) {
+    while (nums.length < expectedLen) nums.push(null);
+    if (nums.length > expectedLen) nums.length = expectedLen;
+  }
+  return nums;
+}
 
-  function handleSave() {
-    // Build one-exercise session for simplicity; parent can aggregate if desired.
-    const sets = repsCsv.split(",").map((s, idx) => ({
-      setNumber: idx + 1,
-      weight: Number(weight),
-      reps: Number((s || "").trim() || 0),
-      rpe: rpeCsv ? Number((rpeCsv.split(",")[idx] || "").trim() || NaN) : undefined,
+export default function ExerciseCard({
+  userId,
+  dayType,
+  def,
+  recommendation,
+  onSaved,
+}) {
+  const toast = useToast();
+
+  const { exerciseId, name, repScheme } = def;
+  const { recommended } = recommendation || {};
+
+  const setsCount = recommended?.sets || repScheme?.sets || 3;
+  const defaultReps = repScheme?.targetReps ?? repScheme?.minReps ?? 8;
+
+  const [weight, setWeight] = useState(
+    Number.isFinite(recommended?.weight)
+      ? recommended.weight
+      : def.startWeight ?? 0
+  );
+  const [repsCsv, setRepsCsv] = useState(
+    Array(setsCount).fill(defaultReps).join(',')
+  );
+  const [rpeCsv, setRpeCsv] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const serverType = useMemo(() => mapDayTypeToServer(dayType), [dayType]);
+
+  async function handleSave() {
+    if (saving) return;
+    setSaving(true);
+
+    // Build sets payload
+    const reps = parseCsvNumbers(repsCsv, setsCount);
+    const rpes = parseCsvNumbers(rpeCsv, setsCount);
+    const w = Number(weight);
+
+    const sets = reps.map((r, i) => ({
+      setNumber: i + 1,
+      weight: Number.isFinite(w) ? w : 0,
+      reps: Number.isFinite(r) ? r : defaultReps,
+      ...(Number.isFinite(rpes[i]) ? { rpe: rpes[i] } : {}),
     }));
 
+    const now = new Date();
     const session = {
-      userId,
-      date: new Date().toISOString(),
-      dayType,
-      exercises: [{
-        exerciseId,
-        target: { weight: Number(weight), reps: recommendation?.recommended?.reps ?? def.repScheme.targetReps ?? def.repScheme.minReps, sets: setsCount },
-        sets
-      }]
+      userId: userId ?? undefined,
+      type: serverType,
+      date: now.toISOString(),
+      exercises: [
+        {
+          exerciseId,
+          target: {
+            weight: Number.isFinite(w) ? w : 0,
+            reps: defaultReps,
+            sets: setsCount,
+          },
+          sets,
+        },
+      ],
     };
 
-    saveSession(session);
-    if (onSaved) onSaved(session);
+    // Always save locally for offline continuity
+    try {
+      saveSession(session);
+    } catch (e) {
+      // Not fatal; still attempt server sync
+      console.warn('Local save failed:', e);
+    }
+
+    try {
+      const created = await api.createWorkout(session);
+
+      // Success → toast + reset inputs to next default state (clean slate)
+      toast.success('Workout saved ✅');
+      if (typeof onSaved === 'function') onSaved(created);
+
+      // Reset fields (common UX pattern after a submission)
+      setRpeCsv('');
+      setRepsCsv(Array(setsCount).fill(defaultReps).join(','));
+      // leave weight as-is (likely user wants same weight on next exercise)
+    } catch (e) {
+      // Failure → enqueue for retry and notify the user
+      enqueueSession(session);
+      toast.error(
+        'Couldn’t reach the server. Saved locally — I’ll retry automatically when you’re back online.'
+      );
+      if (typeof onSaved === 'function') onSaved({ error: e.message });
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <div className="exercise-item">
-      <h4>{name}</h4>
-      <p>
-        Target: {setsCount}×{recommendation?.recommended?.reps ?? (def.repScheme.targetReps || `${def.repScheme.minReps}-${def.repScheme.maxReps}`)} @ {weight}
-      </p>
-      <p className="hint">{reason}</p>
-      <div style={{ display: "grid", gap: "6px", marginTop: "8px" }}>
+    <div className='exercise-card'>
+      <div className='exercise-header'>
+        <h3>{name}</h3>
+        <div className='exercise-meta'>
+          <span>Type: {serverType}</span>
+          {recommended?.reason && (
+            <em title={recommended.reason}> • {recommended.reason}</em>
+          )}
+        </div>
+      </div>
+
+      <div
+        className='exercise-controls'
+        style={{ display: 'grid', gap: 6, marginTop: 8 }}
+      >
         <label>
-          Weight used
-          <input type="number" step="2.5" min="0" value={weight} onChange={e => setWeight(Number(e.target.value))} />
+          Weight
+          <input
+            type='number'
+            step='0.5'
+            value={weight}
+            onChange={(e) => setWeight(parseFloat(e.target.value))}
+          />
         </label>
+
         <label>
           Reps per set (CSV)
-          <input type="text" value={repsCsv} onChange={e => setRepsCsv(e.target.value)} />
+          <input
+            type='text'
+            value={repsCsv}
+            onChange={(e) => setRepsCsv(e.target.value)}
+            placeholder={`e.g., ${Array(setsCount)
+              .fill(defaultReps)
+              .join(',')}`}
+          />
         </label>
+
         <label>
           RPE per set (CSV, optional)
-          <input type="text" value={rpeCsv} onChange={e => setRpeCsv(e.target.value)} placeholder="e.g., 8.5,9,9" />
+          <input
+            type='text'
+            value={rpeCsv}
+            onChange={(e) => setRpeCsv(e.target.value)}
+            placeholder={`e.g., ${Array(setsCount).fill(8).join(',')}`}
+          />
         </label>
-        <button onClick={handleSave}>Save Sets</button>
+
+        <button onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving...' : 'Save Sets'}
+        </button>
       </div>
     </div>
   );

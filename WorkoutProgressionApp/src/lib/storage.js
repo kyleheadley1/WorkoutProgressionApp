@@ -111,3 +111,8 @@ export function seedExample(userId) {
     },
   ]);
 }
+
+export function readSessions(userId) {
+  const list = readAll();
+  return userId ? list.filter((s) => s.userId === userId) : list;
+}
