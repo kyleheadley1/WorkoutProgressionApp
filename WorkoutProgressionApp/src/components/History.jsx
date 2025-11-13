@@ -35,31 +35,119 @@ export default function History({ userId = 'demoUser' }) {
   }, [userId]);
 
   if (!workouts.length) {
-    return <div>No workouts logged yet.</div>;
+    return (
+      <div
+        style={{
+          textAlign: 'center',
+          padding: '60px 20px',
+          color: '#666',
+          background: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06)',
+        }}
+      >
+        No workouts logged yet. Start your first workout!
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: '10px' }}>
-      <h2>Workout History</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div>
+      <h2
+        style={{
+          marginBottom: '24px',
+          fontSize: '22px',
+          fontWeight: 700,
+          color: '#1a1d29',
+        }}
+      >
+        Workout History
+      </h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {workouts.map((w, i) => (
           <div
             key={i}
+            className='history-card'
             style={{
               background: '#fff',
-              borderRadius: 12,
-              padding: 12,
-              boxShadow: '0 2px 8px rgba(0,0,0,.08)',
+              borderRadius: '16px',
+              padding: '20px',
+              boxShadow: '0 2px 12px rgba(0,0,0,.08)',
+              border: '1px solid rgba(0, 0, 0, 0.04)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.12)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,.08)';
             }}
           >
-            <h3 style={{ marginBottom: 4 }}>
-              {w.dayType?.toUpperCase() || 'Unknown'} —{' '}
-              {new Date(w.date).toLocaleDateString()}
-            </h3>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '16px',
+                paddingBottom: '12px',
+                borderBottom: '1px solid #f0f0f0',
+              }}
+            >
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  color: '#1a1d29',
+                }}
+              >
+                {w.dayType?.toUpperCase() || w.type?.toUpperCase() || 'Unknown'}
+              </h3>
+              <span
+                style={{
+                  fontSize: '14px',
+                  color: '#888',
+                  fontWeight: 500,
+                }}
+              >
+                {new Date(w.date).toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </span>
+            </div>
             {w.exercises?.map((ex, j) => (
-              <div key={j} style={{ marginLeft: 12, marginBottom: 8 }}>
-                <strong>{ex.exerciseId}</strong>
-                <div style={{ fontSize: 13, color: '#555' }}>
+              <div
+                key={j}
+                style={{
+                  marginBottom: '16px',
+                  padding: '12px',
+                  background: '#f8f9fa',
+                  borderRadius: '10px',
+                }}
+              >
+                <strong
+                  style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontSize: '15px',
+                    color: '#1a1d29',
+                    fontWeight: 600,
+                  }}
+                >
+                  {ex.exerciseId}
+                </strong>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    color: '#666',
+                    lineHeight: '1.6',
+                  }}
+                >
                   {ex.sets
                     ?.map(
                       (s, k) =>

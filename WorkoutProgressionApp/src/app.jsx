@@ -71,27 +71,36 @@ export default function App() {
   return (
     <ToastProvider>
       <div className='app'>
-        <h1>Workout App</h1>
-        {/* View switcher */}+{' '}
-        <div style={{ display: 'flex', gap: 8, margin: '8px 0 12px' }}>
-          + <button onClick={() => setView('today')}>Today</button>+{' '}
-          <button onClick={() => setView('history')}>History</button>+{' '}
-          <button onClick={() => setView('progress')}>Progress</button>+{' '}
-        </div>
-        {/* ✅ INSERT THE DEV PANEL RIGHT BELOW THIS LINE */}
-        <div
-          style={{
-            margin: '12px 0',
-            padding: '10px',
-            background: '#f6f7f8',
-            borderRadius: 10,
-          }}
-        >
-          <strong>Dev panel</strong>{' '}
+        <header className='app-header'>
+          <h1 className='app-title'>Workout Progression</h1>
+          <nav className='view-nav'>
+            <button
+              className={`nav-btn ${view === 'today' ? 'active' : ''}`}
+              onClick={() => setView('today')}
+            >
+              Today
+            </button>
+            <button
+              className={`nav-btn ${view === 'history' ? 'active' : ''}`}
+              onClick={() => setView('history')}
+            >
+              History
+            </button>
+            <button
+              className={`nav-btn ${view === 'progress' ? 'active' : ''}`}
+              onClick={() => setView('progress')}
+            >
+              Progress
+            </button>
+          </nav>
+        </header>
+        {/* Dev panel */}
+        <div className='dev-panel'>
+          <strong>Dev panel</strong>
           <select
             value={override ?? ''}
             onChange={(e) => setOverride(e.target.value || null)}
-            style={{ marginLeft: 8 }}
+            className='dev-select'
           >
             <option value=''>Auto</option>
             <option value='push'>Push</option>
@@ -103,7 +112,7 @@ export default function App() {
             <option value='rest'>Rest</option>
           </select>
           <button
-            style={{ marginLeft: 8 }}
+            className='dev-btn'
             onClick={() => {
               seedExample(userId);
               alert('Seeded a few local sessions.');
@@ -112,7 +121,7 @@ export default function App() {
             Seed local
           </button>
           <button
-            style={{ marginLeft: 8 }}
+            className='dev-btn'
             onClick={async () => {
               const n = await syncLocalToServer();
               alert(`Synced ${n} local sessions to server.`);
@@ -120,12 +129,6 @@ export default function App() {
           >
             Sync to server
           </button>
-        </div>
-        {/* ✅ END DEV PANEL */}
-        <div style={{ display: 'flex', gap: 8, margin: '8px 0 12px' }}>
-          <button onClick={() => setView('today')}>Today</button>
-          <button onClick={() => setView('history')}>History</button>
-          <button onClick={() => setView('progress')}>Progress</button>
         </div>
         {view === 'today' ? (
           <div className='workout-container'>
@@ -147,17 +150,11 @@ export default function App() {
             </div>
           </div>
         ) : view === 'history' ? (
-          <div
-            className='history-container'
-            style={{ background: '#f3f4f5', padding: 24, borderRadius: 16 }}
-          >
+          <div className='history-container'>
             <History />
           </div>
         ) : (
-          <div
-            className='history-container'
-            style={{ background: '#f3f4f5', padding: 24, borderRadius: 16 }}
-          >
+          <div className='history-container'>
             <Progress />
           </div>
         )}

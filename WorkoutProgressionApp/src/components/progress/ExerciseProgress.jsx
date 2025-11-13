@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { est1RM } from '../ExerciseCard'; // reuse estimator
 
@@ -50,21 +50,41 @@ export default function ExerciseProgress({ exerciseId, title }) {
   }, [exerciseId]);
 
   const data = rows;
+  const [Charts, setCharts] = useState(null);
 
   // Lazy load recharts to avoid blocking initial load
-  const Charts = useMemo(async () => {
-    const recharts = await import('recharts');
-    return {
-      LineChart: recharts.LineChart,
-      Line: recharts.Line,
-      CartesianGrid: recharts.CartesianGrid,
-      XAxis: recharts.XAxis,
-      YAxis: recharts.YAxis,
-      Tooltip: recharts.Tooltip,
-      ResponsiveContainer: recharts.ResponsiveContainer,
-      Legend: recharts.Legend,
-    };
+  useEffect(() => {
+    import('recharts').then((recharts) => {
+      setCharts({
+        LineChart: recharts.LineChart,
+        Line: recharts.Line,
+        CartesianGrid: recharts.CartesianGrid,
+        XAxis: recharts.XAxis,
+        YAxis: recharts.YAxis,
+        Tooltip: recharts.Tooltip,
+        ResponsiveContainer: recharts.ResponsiveContainer,
+        Legend: recharts.Legend,
+      });
+    });
   }, []);
+
+  if (!Charts) {
+    return (
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: 12,
+          padding: 16,
+          boxShadow: '0 3px 14px rgba(0,0,0,.06)',
+        }}
+      >
+        <h3 style={{ margin: '0 0 10px' }}>{title}</h3>
+        <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
+          Loading chart...
+        </div>
+      </div>
+    );
+  }
 
   const {
     LineChart,
