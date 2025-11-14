@@ -155,6 +155,7 @@ export default function App() {
           <ExerciseHistory
             exerciseId={exerciseHistory.exerciseId}
             exerciseName={exerciseHistory.name}
+            userId={userId}
             onBack={() => {
               setExerciseHistory(null);
               setView('today');

@@ -1,8 +1,18 @@
 // src/components/ExerciseHistory.jsx
-import React, { useEffect, useState, useMemo } from 'react';
-import { readSessions } from '../lib/storage';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import {
+  readSessions,
+  saveSession,
+  deleteExerciseSession,
+} from '../lib/storage';
 import { api } from '../lib/api';
 import { est1RM } from './ExerciseCard';
+import { getStrengthLevelComparison } from '../lib/strengthStandards';
+
+const PROFILE_KEY = 'wp_profile_v1';
+
+const BODYWEIGHT_EXERCISES = new Set(['pushUps', 'deficitPushups']);
+const PER_HAND_EXERCISES = new Set(['dumbbellBenchPress']);
 
 export default function ExerciseHistory({
   exerciseId,
@@ -12,53 +22,101 @@ export default function ExerciseHistory({
 }) {
   const [workouts, setWorkouts] = useState([]);
   const [view, setView] = useState('results'); // 'results' | 'trends'
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+  const [profile, setProfile] = useState(() => {
+    if (typeof window === 'undefined') {
+      return { gender: 'male', bodyweight: 180 };
+    }
+    try {
+      const raw = window.localStorage.getItem(PROFILE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (
+          parsed &&
+          (parsed.gender === 'male' || parsed.gender === 'female') &&
+          Number.isFinite(parsed.bodyweight)
+        ) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return { gender: 'male', bodyweight: 180 };
+  });
+  const isBodyweightExercise = BODYWEIGHT_EXERCISES.has(exerciseId);
+  const isPerHandExercise = PER_HAND_EXERCISES.has(exerciseId);
+  const [form, setForm] = useState(() => ({
+    date: new Date().toISOString().slice(0, 10),
+    weight: '',
+    reps: '',
+    sets: '3',
+  }));
 
-  useEffect(() => {
-    // Load all local sessions
-    const allLocal = readSessions(userId);
-    const localFiltered = allLocal
-      .map((w) => ({
-        ...w,
-        exercises: (w.exercises || []).filter(
-          (e) => e.exerciseId === exerciseId
-        ),
-      }))
-      .filter((w) => w.exercises.length > 0);
+  const loadWorkouts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const allLocal = readSessions(userId);
+      const localFiltered = allLocal
+        .map((w) => ({
+          ...w,
+          origin: 'local',
+          exercises: (w.exercises || []).filter(
+            (e) => e.exerciseId === exerciseId
+          ),
+        }))
+        .filter((w) => w.exercises.length > 0);
 
-    setWorkouts(localFiltered);
+      let combined = [...localFiltered];
 
-    // Then fetch server data if available
-    (async () => {
       try {
         const serverData = await api.listWorkouts();
         if (serverData?.length) {
-          // Filter for this exercise
-          const exerciseWorkouts = serverData
+          const serverFiltered = serverData
             .map((w) => ({
               ...w,
+              origin: 'server',
               exercises: (w.exercises || []).filter(
                 (e) => e.exerciseId === exerciseId
               ),
             }))
             .filter((w) => w.exercises.length > 0);
-
-          // Merge with local, dedupe by date
-          const combined = [...exerciseWorkouts, ...localFiltered];
-          const seen = new Set();
-          const unique = combined.filter((w) => {
-            const key = w.date + (w.exercises?.[0]?.exerciseId || '');
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-          });
-          unique.sort((a, b) => new Date(b.date) - new Date(a.date));
-          setWorkouts(unique);
+          combined = [...serverFiltered, ...combined];
         }
       } catch (e) {
         console.warn('Failed to load from server:', e.message);
       }
-    })();
+
+      const seen = new Map();
+      combined.forEach((w) => {
+        const key = `${new Date(w.date).toISOString().slice(0, 10)}::${
+          w.exercises?.[0]?.exerciseId || ''
+        }`;
+        if (!seen.has(key) || w.origin === 'local') {
+          seen.set(key, w);
+        }
+      });
+
+      const deduped = Array.from(seen.values()).sort(
+        (a, b) => new Date(b.date) - new Date(a.date)
+      );
+      setWorkouts(deduped);
+    } finally {
+      setLoading(false);
+    }
   }, [userId, exerciseId]);
+
+  useEffect(() => {
+    loadWorkouts();
+  }, [loadWorkouts]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      } catch {}
+    }
+  }, [profile]);
 
   // Group workouts by date and separate warmup/working sets
   const groupedWorkouts = useMemo(() => {
@@ -73,9 +131,14 @@ export default function ExerciseHistory({
           warmupSets: [],
           workingSets: [],
           exercise: w.exercises?.[0],
+          sources: [],
         });
       }
       const entry = grouped.get(dateKey);
+      entry.sources.push({ origin: w.origin || 'unknown', session: w });
+      if (!entry.exercise && w.exercises?.[0]) {
+        entry.exercise = w.exercises[0];
+      }
       const sets = w.exercises?.[0]?.sets || [];
 
       // For dumbbell bench press, first 3 sets are warmups if there are 4+ sets total
@@ -100,26 +163,124 @@ export default function ExerciseHistory({
     const data = [];
     groupedWorkouts.forEach((entry) => {
       if (entry.workingSets.length > 0) {
-        // Find max weight from working sets
         const maxWeight = Math.max(
           ...entry.workingSets.map((s) => s.weight || 0)
         );
         const maxWeightSet = entry.workingSets.find(
           (s) => s.weight === maxWeight
         );
+        const topReps = Math.max(
+          ...entry.workingSets.map((s) => s.reps || 0),
+          0
+        );
         if (maxWeightSet) {
           const e1rm = est1RM(maxWeightSet.weight, maxWeightSet.reps);
+          const population = getStrengthLevelComparison(
+            exerciseId,
+            {
+              weight: maxWeightSet.weight,
+              reps: topReps,
+            },
+            profile
+          );
           data.push({
             date: entry.dateKey,
             dateObj: entry.date,
-            weight: maxWeight,
-            e1rm: e1rm,
+            weight: maxWeightSet.weight,
+            e1rm,
+            reps: topReps,
+            population,
           });
         }
       }
     });
     return data.sort((a, b) => a.date.localeCompare(b.date));
-  }, [groupedWorkouts]);
+  }, [groupedWorkouts, exerciseId, profile]);
+
+  const handleProfileChange = (field, value) => {
+    setProfile((prev) => ({
+      ...prev,
+      [field]: field === 'bodyweight' ? Number(value) || 0 : value,
+    }));
+  };
+
+  const handleFormChange = (field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleAddManual = async (event) => {
+    event.preventDefault();
+    setFormError('');
+    setActionMessage('');
+
+    const repsValue = Number(form.reps);
+    const setsCount = Math.max(1, parseInt(form.sets, 10) || 1);
+    const date = new Date(`${form.date}T12:00:00`);
+
+    if (Number.isNaN(date.getTime())) {
+      setFormError('Please provide a valid date.');
+      return;
+    }
+    if (!Number.isFinite(repsValue) || repsValue <= 0) {
+      setFormError('Repetitions must be a positive number.');
+      return;
+    }
+    let weightValue = 0;
+    if (!isBodyweightExercise) {
+      weightValue = Number(form.weight);
+      if (!Number.isFinite(weightValue) || weightValue <= 0) {
+        setFormError('Weight must be a positive number.');
+        return;
+      }
+    }
+
+    const isoDate = date.toISOString();
+    const setsArray = Array.from({ length: setsCount }, (_, idx) => ({
+      setNumber: idx + 1,
+      weight: weightValue,
+      reps: repsValue,
+    }));
+
+    const session = {
+      userId,
+      date: isoDate,
+      type: 'manual',
+      dayType: 'manual',
+      exercises: [
+        {
+          exerciseId,
+          target: { weight: weightValue, reps: repsValue, sets: setsCount },
+          sets: setsArray,
+        },
+      ],
+    };
+
+    saveSession(session);
+    setActionMessage('Workout added locally.');
+    setForm((prev) => ({
+      ...prev,
+      weight: '',
+      reps: '',
+    }));
+    await loadWorkouts();
+    setView('results');
+  };
+
+  const handleRemoveEntry = async (entry) => {
+    const hasLocal = entry.sources?.some((src) => src.origin === 'local');
+    if (!hasLocal) {
+      setActionMessage(
+        'This record originates from the server and cannot be removed locally.'
+      );
+      return;
+    }
+    deleteExerciseSession(userId, exerciseId, entry.dateKey);
+    setActionMessage('Entry removed from local history.');
+    await loadWorkouts();
+  };
 
   return (
     <div className='exercise-history'>
@@ -146,6 +307,99 @@ export default function ExerciseHistory({
         </button>
       </div>
 
+      <div className='history-controls'>
+        <div className='profile-controls'>
+          <label>
+            Gender
+            <select
+              value={profile.gender}
+              onChange={(e) => handleProfileChange('gender', e.target.value)}
+            >
+              <option value='male'>Male</option>
+              <option value='female'>Female</option>
+            </select>
+          </label>
+          <label>
+            Bodyweight (lb)
+            <input
+              type='number'
+              min='60'
+              max='400'
+              step='1'
+              value={profile.bodyweight}
+              onChange={(e) =>
+                handleProfileChange('bodyweight', e.target.value)
+              }
+            />
+          </label>
+        </div>
+
+        <form className='add-session-form' onSubmit={handleAddManual}>
+          <div className='form-row'>
+            <label>
+              Date
+              <input
+                type='date'
+                value={form.date}
+                onChange={(e) => handleFormChange('date', e.target.value)}
+                required
+              />
+            </label>
+            {!isBodyweightExercise && (
+              <label>
+                Top set weight (
+                {isPerHandExercise ? 'lb per dumbbell' : 'lb total'})
+                <input
+                  type='number'
+                  min='0'
+                  step='2.5'
+                  value={form.weight}
+                  onChange={(e) => handleFormChange('weight', e.target.value)}
+                  placeholder='e.g. 130'
+                  required={!isBodyweightExercise}
+                />
+              </label>
+            )}
+            <label>
+              Top set reps
+              <input
+                type='number'
+                min='1'
+                step='1'
+                value={form.reps}
+                onChange={(e) => handleFormChange('reps', e.target.value)}
+                placeholder='e.g. 8'
+                required
+              />
+            </label>
+            <label>
+              Sets logged
+              <input
+                type='number'
+                min='1'
+                max='10'
+                step='1'
+                value={form.sets}
+                onChange={(e) => handleFormChange('sets', e.target.value)}
+              />
+            </label>
+          </div>
+          <button type='submit' className='primary-btn'>
+            Add to history
+          </button>
+        </form>
+        {(formError || actionMessage) && (
+          <div className='form-status'>
+            {formError && <span className='form-error'>{formError}</span>}
+            {actionMessage && !formError && (
+              <span className='form-success'>{actionMessage}</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {loading && <div className='loading-banner'>Refreshing history…</div>}
+
       {view === 'results' ? (
         <div className='results-view'>
           {groupedWorkouts.length === 0 ? (
@@ -154,11 +408,13 @@ export default function ExerciseHistory({
             </div>
           ) : (
             groupedWorkouts.map((entry, idx) => {
-              const latestSet = entry.workingSets[entry.workingSets.length - 1];
               const maxE1RM = entry.workingSets.reduce((max, set) => {
                 const e1rm = est1RM(set.weight, set.reps);
                 return e1rm > max ? e1rm : max;
               }, 0);
+              const canDelete = entry.sources?.some(
+                (src) => src.origin === 'local'
+              );
 
               return (
                 <div key={idx} className='workout-entry'>
@@ -170,6 +426,15 @@ export default function ExerciseHistory({
                         day: 'numeric',
                       })}
                     </h2>
+                    {canDelete && (
+                      <button
+                        className='remove-entry-btn'
+                        type='button'
+                        onClick={() => handleRemoveEntry(entry)}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
 
                   {entry.warmupSets.length > 0 && (
@@ -181,6 +446,12 @@ export default function ExerciseHistory({
                             <div className='set-number'>{set.setNumber}</div>
                             <div className='set-details'>
                               {set.reps} reps x {set.weight} lb
+                              {isPerHandExercise && (
+                                <span className='per-hand-indicator'>
+                                  {' '}
+                                  per dumbbell
+                                </span>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -197,6 +468,12 @@ export default function ExerciseHistory({
                             <div className='set-number'>{set.setNumber}</div>
                             <div className='set-details'>
                               {set.reps} reps x {set.weight} lb
+                              {isPerHandExercise && (
+                                <span className='per-hand-indicator'>
+                                  {' '}
+                                  per dumbbell
+                                </span>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -222,14 +499,14 @@ export default function ExerciseHistory({
         </div>
       ) : (
         <div className='trends-view'>
-          <TrendsCharts data={trendData} />
+          <TrendsCharts data={trendData} isPerHand={isPerHandExercise} />
         </div>
       )}
     </div>
   );
 }
 
-function TrendsCharts({ data }) {
+function TrendsCharts({ data, isPerHand }) {
   const [Charts, setCharts] = useState(null);
 
   useEffect(() => {
@@ -281,6 +558,8 @@ function TrendsCharts({ data }) {
   const e1rmMax = Math.max(...e1rmValues);
   const weightMin = Math.min(...weightValues);
   const weightMax = Math.max(...weightValues);
+  const latest = data[data.length - 1] || {};
+  const comparison = latest.population;
 
   return (
     <div className='trends-charts'>
@@ -334,12 +613,49 @@ function TrendsCharts({ data }) {
         </div>
       </div>
 
+      {comparison && (
+        <div className='trend-card population-card'>
+          <div className='trend-header'>
+            <div>
+              <h3>Population Percentile</h3>
+              <div className='trend-value'>{comparison.percentile}%</div>
+              <div className='trend-timestamp'>
+                {comparison.label} ·{' '}
+                {comparison.gender === 'female' ? 'Female' : 'Male'} lifters at{' '}
+                {comparison.bodyweight} lb{isPerHand && ' (per dumbbell)'}
+              </div>
+            </div>
+            <div className='trend-arrow'>↗︎</div>
+          </div>
+          <div className='population-detail'>
+            <span className='population-note'>
+              Based on Strength Level data
+            </span>
+            <a
+              className='source-link'
+              href={comparison.source}
+              target='_blank'
+              rel='noreferrer'
+            >
+              strengthlevel.com
+            </a>
+          </div>
+          {isPerHand && Number.isFinite(latest.weight) && (
+            <div className='per-hand-note'>
+              Weight shown is per dumbbell (already split for Strength Level
+              comparison).
+            </div>
+          )}
+        </div>
+      )}
+
       <div className='trend-card'>
         <div className='trend-header'>
           <div>
             <h3>Weight</h3>
             <div className='trend-value'>
-              {data[data.length - 1]?.weight || '—'} lbs in 1 set
+              {data[data.length - 1]?.weight || '—'} lbs
+              {isPerHand && ' per dumbbell'} in 1 set
             </div>
             <div className='trend-timestamp'>
               Logged {getTimeAgo(data[data.length - 1]?.dateObj)}

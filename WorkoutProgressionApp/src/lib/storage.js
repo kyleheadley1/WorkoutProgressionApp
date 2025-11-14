@@ -116,3 +116,31 @@ export function readSessions(userId) {
   const list = readAll();
   return userId ? list.filter((s) => s.userId === userId) : list;
 }
+
+export function deleteExerciseSession(userId, exerciseId, dateKey) {
+  const list = readAll();
+  const targetKey = dateKey;
+  const next = [];
+  list.forEach((session) => {
+    if (session.userId !== userId) {
+      next.push(session);
+      return;
+    }
+    const sessionDate = new Date(session.date);
+    const sessionKey = Number.isNaN(sessionDate.getTime())
+      ? null
+      : sessionDate.toISOString().slice(0, 10);
+    if (sessionKey !== targetKey) {
+      next.push(session);
+      return;
+    }
+    const remainingExercises = (session.exercises || []).filter(
+      (ex) => ex.exerciseId !== exerciseId
+    );
+    if (remainingExercises.length) {
+      next.push({ ...session, exercises: remainingExercises });
+    }
+    // Otherwise drop the session entirely.
+  });
+  writeAll(next);
+}

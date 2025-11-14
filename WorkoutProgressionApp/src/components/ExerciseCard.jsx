@@ -90,6 +90,7 @@ export default function ExerciseCard({
   const toast = useToast();
   const { exerciseId, name, repScheme } = def;
   const { recommended } = recommendation || {};
+  const restPeriod = def.rest ?? def.restPeriod ?? def.restTime ?? null;
 
   // Check if this is dumbbell bench press that needs warmup sets
   const isDumbbellBenchPress = exerciseId === 'dumbbellBenchPress';
@@ -214,7 +215,10 @@ export default function ExerciseCard({
   return (
     <div className='strong-card'>
       <div className='strong-header'>
-        <div className='title'>{name}</div>
+        <div className='title-group'>
+          <div className='title'>{name}</div>
+          {restPeriod && <div className='rest-pill'>Rest {restPeriod}</div>}
+        </div>
         <button
           className='history-btn'
           onClick={() => onViewHistory?.(exerciseId, name)}

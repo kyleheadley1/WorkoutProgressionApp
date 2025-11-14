@@ -15,6 +15,7 @@ const defs = [
     startWeight: 50,
     repScheme: { type: 'fixed', targetReps: 5, sets: 3 },
     failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
+    rest: '3 min',
   },
   {
     exerciseId: 'larsenPress',
@@ -24,6 +25,7 @@ const defs = [
     startWeight: 45,
     repScheme: { type: 'fixed', targetReps: 10, sets: 2 },
     failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
+    rest: '3 min',
   },
   {
     exerciseId: 'standingArnoldPress',
@@ -33,6 +35,7 @@ const defs = [
     startWeight: 25,
     repScheme: { type: 'range', minReps: 8, maxReps: 10, sets: 3 },
     failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
+    rest: '2 min',
   },
   {
     exerciseId: 'deficitPushups',
@@ -42,6 +45,7 @@ const defs = [
     startWeight: 0,
     repScheme: { type: 'range', minReps: 12, maxReps: 15, sets: 3 },
     failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
+    rest: '30 sec',
   },
   {
     exerciseId: 'lateralRaises',
@@ -51,6 +55,7 @@ const defs = [
     startWeight: 10,
     repScheme: { type: 'range', minReps: 12, maxReps: 15, sets: 3 },
     failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
+    rest: '1 min',
   },
   {
     exerciseId: 'skullCrushers',
@@ -60,6 +65,7 @@ const defs = [
     startWeight: 20,
     repScheme: { type: 'fixed', targetReps: 15, sets: 3 },
     failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
+    rest: '1 min',
   },
   {
     exerciseId: 'overheadTricepExtension',
@@ -69,6 +75,7 @@ const defs = [
     startWeight: 15,
     repScheme: { type: 'fixed', targetReps: 12, sets: 2 },
     failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
+    rest: '1 min',
   },
 ];
 
