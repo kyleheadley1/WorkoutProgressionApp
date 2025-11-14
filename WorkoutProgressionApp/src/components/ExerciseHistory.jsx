@@ -12,7 +12,7 @@ import { getStrengthLevelComparison } from '../lib/strengthStandards';
 const PROFILE_KEY = 'wp_profile_v1';
 
 const BODYWEIGHT_EXERCISES = new Set(['pushUps', 'deficitPushups']);
-const PER_HAND_EXERCISES = new Set(['dumbbellBenchPress']);
+const PER_HAND_EXERCISES = new Set(['dumbbellBenchPress', 'trapBarDeadlift']);
 
 export default function ExerciseHistory({
   exerciseId,
@@ -21,7 +21,7 @@ export default function ExerciseHistory({
   userId = 'demoUser',
 }) {
   const [workouts, setWorkouts] = useState([]);
-  const [view, setView] = useState('results'); // 'results' | 'trends'
+  const [view, setView] = useState('trends'); // 'results' | 'trends' - default to trends when opened from history button
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
@@ -48,9 +48,7 @@ export default function ExerciseHistory({
   const isPerHandExercise = PER_HAND_EXERCISES.has(exerciseId);
   const [form, setForm] = useState(() => ({
     date: new Date().toISOString().slice(0, 10),
-    weight: '',
-    reps: '',
-    sets: '3',
+    sets: [{ weight: '', reps: '' }], // Array of sets with individual weight/reps
   }));
 
   const loadWorkouts = useCallback(async () => {
@@ -205,10 +203,42 @@ export default function ExerciseHistory({
   };
 
   const handleFormChange = (field, value) => {
+    if (field === 'date') {
+      setForm((prev) => ({
+        ...prev,
+        date: value,
+      }));
+    }
+  };
+
+  const handleSetChange = (setIndex, field, value) => {
+    setForm((prev) => {
+      const newSets = [...prev.sets];
+      newSets[setIndex] = {
+        ...newSets[setIndex],
+        [field]: value,
+      };
+      return {
+        ...prev,
+        sets: newSets,
+      };
+    });
+  };
+
+  const addSet = () => {
     setForm((prev) => ({
       ...prev,
-      [field]: value,
+      sets: [...prev.sets, { weight: '', reps: '' }],
     }));
+  };
+
+  const removeSet = (index) => {
+    if (form.sets.length > 1) {
+      setForm((prev) => ({
+        ...prev,
+        sets: prev.sets.filter((_, i) => i !== index),
+      }));
+    }
   };
 
   const handleAddManual = async (event) => {
@@ -216,34 +246,52 @@ export default function ExerciseHistory({
     setFormError('');
     setActionMessage('');
 
-    const repsValue = Number(form.reps);
-    const setsCount = Math.max(1, parseInt(form.sets, 10) || 1);
     const date = new Date(`${form.date}T12:00:00`);
 
     if (Number.isNaN(date.getTime())) {
       setFormError('Please provide a valid date.');
       return;
     }
-    if (!Number.isFinite(repsValue) || repsValue <= 0) {
-      setFormError('Repetitions must be a positive number.');
+
+    // Validate all sets
+    const setsArray = form.sets
+      .map((set, idx) => {
+        const reps = Number(set.reps);
+        const weight = isBodyweightExercise ? 0 : Number(set.weight);
+
+        if (!Number.isFinite(reps) || reps <= 0) {
+          setFormError(`Set ${idx + 1}: Reps must be a positive number.`);
+          return null;
+        }
+        if (!isBodyweightExercise && (!Number.isFinite(weight) || weight <= 0)) {
+          setFormError(`Set ${idx + 1}: Weight must be a positive number.`);
+          return null;
+        }
+
+        return {
+          setNumber: idx + 1,
+          weight,
+          reps,
+        };
+      })
+      .filter(Boolean);
+
+    if (setsArray.length === 0) {
+      setFormError('Please enter at least one set.');
       return;
     }
-    let weightValue = 0;
-    if (!isBodyweightExercise) {
-      weightValue = Number(form.weight);
-      if (!Number.isFinite(weightValue) || weightValue <= 0) {
-        setFormError('Weight must be a positive number.');
-        return;
-      }
-    }
+
+    // Calculate target weight/reps
+    // For exercises with <=5 sets: use top set (max weight)
+    // For exercises with >5 sets: use max weight and corresponding reps
+    const maxWeightSet = setsArray.reduce((max, set) =>
+      set.weight > max.weight ? set : max
+    );
+    const targetWeight = maxWeightSet.weight;
+    // For <=5 sets, use top set reps; for >5 sets, use the reps from max weight set
+    const targetReps = maxWeightSet.reps;
 
     const isoDate = date.toISOString();
-    const setsArray = Array.from({ length: setsCount }, (_, idx) => ({
-      setNumber: idx + 1,
-      weight: weightValue,
-      reps: repsValue,
-    }));
-
     const session = {
       userId,
       date: isoDate,
@@ -252,19 +300,32 @@ export default function ExerciseHistory({
       exercises: [
         {
           exerciseId,
-          target: { weight: weightValue, reps: repsValue, sets: setsCount },
+          target: {
+            weight: targetWeight,
+            reps: targetReps,
+            sets: setsArray.length,
+          },
           sets: setsArray,
         },
       ],
     };
 
     saveSession(session);
-    setActionMessage('Workout added locally.');
-    setForm((prev) => ({
-      ...prev,
-      weight: '',
-      reps: '',
-    }));
+
+    // Try to sync to server
+    try {
+      await api.createWorkout(session);
+      setActionMessage('Workout saved and synced to server ✅');
+    } catch (e) {
+      const { enqueueSession } = await import('../lib/offlineQueue');
+      enqueueSession(session);
+      setActionMessage('Workout saved locally — will sync when online.');
+    }
+
+    setForm({
+      date: new Date().toISOString().slice(0, 10),
+      sets: [{ weight: '', reps: '' }],
+    });
     await loadWorkouts();
     setView('results');
   };
@@ -345,45 +406,68 @@ export default function ExerciseHistory({
                 required
               />
             </label>
-            {!isBodyweightExercise && (
-              <label>
-                Top set weight (
-                {isPerHandExercise ? 'lb per dumbbell' : 'lb total'})
-                <input
-                  type='number'
-                  min='0'
-                  step='2.5'
-                  value={form.weight}
-                  onChange={(e) => handleFormChange('weight', e.target.value)}
-                  placeholder='e.g. 130'
-                  required={!isBodyweightExercise}
-                />
-              </label>
-            )}
-            <label>
-              Top set reps
-              <input
-                type='number'
-                min='1'
-                step='1'
-                value={form.reps}
-                onChange={(e) => handleFormChange('reps', e.target.value)}
-                placeholder='e.g. 8'
-                required
-              />
-            </label>
-            <label>
-              Sets logged
-              <input
-                type='number'
-                min='1'
-                max='10'
-                step='1'
-                value={form.sets}
-                onChange={(e) => handleFormChange('sets', e.target.value)}
-              />
-            </label>
           </div>
+          
+          <div className='sets-input-section'>
+            <div className='sets-input-header'>
+              <h4>Sets</h4>
+              <button
+                type='button'
+                onClick={addSet}
+                className='add-set-btn'
+              >
+                + Add Set
+              </button>
+            </div>
+            {form.sets.map((set, idx) => (
+              <div
+                key={idx}
+                className={`set-input-row ${isBodyweightExercise ? 'bodyweight-set' : ''}`}
+              >
+                <div className='set-input-number'>Set {idx + 1}</div>
+                {!isBodyweightExercise && (
+                  <label>
+                    Weight ({isPerHandExercise ? 'lb per dumbbell' : 'lb'})
+                    <input
+                      type='number'
+                      min='0'
+                      step='2.5'
+                      value={set.weight}
+                      onChange={(e) =>
+                        handleSetChange(idx, 'weight', e.target.value)
+                      }
+                      placeholder='e.g. 130'
+                      required={!isBodyweightExercise}
+                    />
+                  </label>
+                )}
+                <label>
+                  Reps
+                  <input
+                    type='number'
+                    min='1'
+                    step='1'
+                    value={set.reps}
+                    onChange={(e) =>
+                      handleSetChange(idx, 'reps', e.target.value)
+                    }
+                    placeholder='e.g. 8'
+                    required
+                  />
+                </label>
+                {form.sets.length > 1 && (
+                  <button
+                    type='button'
+                    onClick={() => removeSet(idx)}
+                    className='remove-set-btn'
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          
           <button type='submit' className='primary-btn'>
             Add to history
           </button>

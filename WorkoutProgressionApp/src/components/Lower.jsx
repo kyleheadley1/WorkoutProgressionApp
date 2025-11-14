@@ -1,4 +1,4 @@
-// src/components/Legs.jsx
+// src/components/Lower.jsx
 import React, { useState } from 'react';
 import ExerciseCard from './ExerciseCard';
 import { useRecommendations } from '../hooks/useRecommendations';
@@ -6,37 +6,27 @@ import { saveSession } from '../lib/storage';
 import { api } from '../lib/api';
 import { enqueueSession } from '../lib/offlineQueue';
 import { useToast } from './ToastProvider';
+import './workout.css';
 
 const defs = [
   {
-    exerciseId: 'dumbbellBulgarianSplitSquat',
-    name: 'Dumbbell Bulgarian Split Squat',
+    exerciseId: 'trapBarDeadlift',
+    name: 'Dumbbell Deadlift',
     increment: 5,
     rounding: 2.5,
-    startWeight: 45,
+    startWeight: 120,
     repScheme: { type: 'fixed', targetReps: 5, sets: 4 },
     failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
     modality: 'dumbbell',
-    rest: '2 min',
-  },
-  {
-    exerciseId: 'dumbbellBulgarianSplitSquatPause',
-    name: 'Dumbbell Bulgarian Split Squat (Pause)',
-    increment: 5,
-    rounding: 2.5,
-    startWeight: 45,
-    repScheme: { type: 'fixed', targetReps: 5, sets: 2 },
-    failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
-    modality: 'dumbbell',
-    rest: '2 min',
+    rest: '3 min',
   },
   {
     exerciseId: 'dumbbellRomanianDeadlift',
     name: 'Dumbbell Romanian Deadlift',
     increment: 5,
     rounding: 2.5,
-    startWeight: 45,
-    repScheme: { type: 'fixed', targetReps: 10, sets: 3 },
+    startWeight: 50,
+    repScheme: { type: 'fixed', targetReps: 8, sets: 2 },
     failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
     modality: 'dumbbell',
     rest: '3 min',
@@ -47,36 +37,47 @@ const defs = [
     increment: 5,
     rounding: 2.5,
     startWeight: 60,
-    repScheme: { type: 'fixed', targetReps: 10, sets: 2 },
+    repScheme: { type: 'fixed', targetReps: 8, sets: 4 },
     failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
     modality: 'dumbbell',
     rest: '2 min',
   },
   {
-    exerciseId: 'standingDumbbellCalfRaise',
-    name: 'Standing Dumbbell Calf Raise',
+    exerciseId: 'dumbbellStepUp',
+    name: 'Dumbbell Step Up',
     increment: 5,
     rounding: 2.5,
-    startWeight: 90,
-    repScheme: { type: 'fixed', targetReps: 15, sets: 3 },
+    startWeight: 35,
+    repScheme: { type: 'fixed', targetReps: 10, sets: 3 },
+    failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
+    modality: 'dumbbell',
+    rest: '2 min',
+  },
+  {
+    exerciseId: 'seatedDumbbellCalfRaise',
+    name: 'Seated Dumbbell Calf Raise',
+    increment: 5,
+    rounding: 2.5,
+    startWeight: 10,
+    repScheme: { type: 'fixed', targetReps: 20, sets: 4 },
     failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
     modality: 'dumbbell',
     rest: '1 min',
   },
   {
-    exerciseId: 'weightedCrunches',
-    name: 'Weighted Crunches',
-    increment: 2.5,
-    rounding: 2.5,
-    startWeight: 25,
-    repScheme: { type: 'range', minReps: 15, maxReps: 20, sets: 3 },
+    exerciseId: 'hangingLegRaise',
+    name: 'Hanging Leg Raise',
+    increment: 0,
+    rounding: 0,
+    startWeight: 0,
+    repScheme: { type: 'fixed', targetReps: 8, sets: 5 },
     failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 },
-    modality: 'dumbbell',
-    rest: '30 sec',
+    modality: 'bodyweight',
+    rest: '1 min',
   },
 ];
 
-export default function Legs({ userId = 'demoUser', onViewHistory, onWorkoutSaved }) {
+export default function Lower({ userId = 'demoUser', onViewHistory, onWorkoutSaved }) {
   const { items, loading } = useRecommendations(userId, defs);
   const [exerciseData, setExerciseData] = useState({});
   const [saving, setSaving] = useState(false);
@@ -109,8 +110,8 @@ export default function Legs({ userId = 'demoUser', onViewHistory, onWorkoutSave
 
     const session = {
       userId,
-      type: 'legs',
-      dayType: 'legs',
+      type: 'lower',
+      dayType: 'lower',
       date: new Date().toISOString(),
       exercises,
     };
@@ -136,17 +137,19 @@ export default function Legs({ userId = 'demoUser', onViewHistory, onWorkoutSave
   };
 
   return (
-    <div className='legs-workout'>
-      <h3>Leg Day</h3>
+    <div className='lower-workout'>
+      <h3>Lower Day</h3>
       <div className='exercise-list'>
         {loading ? (
           <p>Loading...</p>
+        ) : defs.length === 0 ? (
+          <p>Lower workout exercises to be added based on attachment.</p>
         ) : (
           items.map((rec, idx) => (
             <ExerciseCard
               key={defs[idx].exerciseId}
               userId={userId}
-              dayType='legs'
+              dayType='lower'
               def={defs[idx]}
               recommendation={rec}
               onViewHistory={onViewHistory}
@@ -167,3 +170,4 @@ export default function Legs({ userId = 'demoUser', onViewHistory, onWorkoutSave
     </div>
   );
 }
+

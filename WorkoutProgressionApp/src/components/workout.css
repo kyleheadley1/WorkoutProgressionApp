@@ -564,6 +564,97 @@ h2 {
   font-weight: 500;
 }
 
+.sets-input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sets-input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.sets-input-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1d29;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.add-set-btn {
+  padding: 6px 12px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  color: #666;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-set-btn:hover {
+  border-color: #ff4d61;
+  color: #ff4d61;
+  background: #fff5f6;
+}
+
+.set-input-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  border: 1px solid #e0e0e0;
+}
+
+.set-input-row.bodyweight-set {
+  /* When only reps (bodyweight exercises), adjust grid */
+  grid-template-columns: 60px 1fr auto;
+}
+
+.set-input-number {
+  font-weight: 700;
+  color: #ff4d61;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.set-input-row label {
+  margin: 0;
+}
+
+.remove-set-btn {
+  width: 32px;
+  height: 32px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  color: #d93939;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+
+.remove-set-btn:hover {
+  border-color: #d93939;
+  background: #fff5f5;
+}
+
 .form-status {
   font-size: 13px;
   display: flex;
@@ -931,6 +1022,46 @@ h2 {
 }
 
 .primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.workout-save-container {
+  margin-top: 32px;
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+  border-top: 2px solid #f0f0f0;
+}
+
+.save-entire-workout-btn {
+  padding: 16px 48px;
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, #ff4d61 0%, #e63946 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(255, 77, 97, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.save-entire-workout-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 77, 97, 0.4);
+  background: linear-gradient(135deg, #ff5d6d 0%, #f04a56 100%);
+}
+
+.save-entire-workout-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(255, 77, 97, 0.3);
+}
+
+.save-entire-workout-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;

@@ -10,6 +10,9 @@ import React, { useEffect, useState } from 'react';
 import Pull from './components/Pull';
 import Push from './components/Push';
 import Legs from './components/Legs';
+import Upper from './components/Upper';
+import Lower from './components/Lower';
+import FullBody from './components/FullBody';
 import './components/workout.css';
 import { seedExample } from './lib/storage';
 import { recommendDayType } from './lib/scheduler';
@@ -32,6 +35,12 @@ export default function App() {
     setDayType(rec);
   }, []);
 
+  const handleWorkoutSaved = () => {
+    // Refresh the schedule logic after workout is saved
+    const rec = recommendDayType(userId, new Date());
+    setDayType(rec);
+  };
+
   function renderByType(t) {
     switch (t) {
       case 'push':
@@ -41,6 +50,7 @@ export default function App() {
             onViewHistory={(id, name) =>
               setExerciseHistory({ exerciseId: id, name })
             }
+            onWorkoutSaved={handleWorkoutSaved}
           />
         );
       case 'pull':
@@ -50,6 +60,7 @@ export default function App() {
             onViewHistory={(id, name) =>
               setExerciseHistory({ exerciseId: id, name })
             }
+            onWorkoutSaved={handleWorkoutSaved}
           />
         );
       case 'legs':
@@ -59,28 +70,38 @@ export default function App() {
             onViewHistory={(id, name) =>
               setExerciseHistory({ exerciseId: id, name })
             }
+            onWorkoutSaved={handleWorkoutSaved}
           />
         );
       case 'upper':
         return (
-          <div>
-            <h3>Upper Day</h3>
-            <p>Program upper-body compounds + accessories.</p>
-          </div>
+          <Upper
+            userId={userId}
+            onViewHistory={(id, name) =>
+              setExerciseHistory({ exerciseId: id, name })
+            }
+            onWorkoutSaved={handleWorkoutSaved}
+          />
         );
       case 'lower':
         return (
-          <div>
-            <h3>Lower Day</h3>
-            <p>Program squats/hinge + accessories.</p>
-          </div>
+          <Lower
+            userId={userId}
+            onViewHistory={(id, name) =>
+              setExerciseHistory({ exerciseId: id, name })
+            }
+            onWorkoutSaved={handleWorkoutSaved}
+          />
         );
       case 'full':
         return (
-          <div>
-            <h3>Full Body</h3>
-            <p>Blend push, pull, and legs; prioritize weak links.</p>
-          </div>
+          <FullBody
+            userId={userId}
+            onViewHistory={(id, name) =>
+              setExerciseHistory({ exerciseId: id, name })
+            }
+            onWorkoutSaved={handleWorkoutSaved}
+          />
         );
       case 'rest':
       default:
