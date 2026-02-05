@@ -1,13 +1,9 @@
 import { ToastProvider } from './components/ToastProvider.jsx';
-// top
+import { ProfileProvider, useProfile } from './contexts/ProfileContext.jsx';
 import Progress from './components/progress/Progress.jsx';
 import History from './components/History.jsx';
 import ExerciseHistory from './components/ExerciseHistory.jsx';
-// state near top of App()
-
-import { syncLocalToServer } from './lib/sync'; // we created this earlier
-
-// src/app.jsx
+import { syncLocalToServer } from './lib/sync';
 import React, { useEffect, useState } from 'react';
 import Pull from './components/Pull';
 import Push from './components/Push';
@@ -23,12 +19,12 @@ function Rest() {
   return <div className='rest-day'>Rest Day 😴</div>;
 }
 
-export default function App() {
-  const [override, setOverride] = useState(null); // 'push' | 'pull' | 'legs' | 'upper' | 'lower' | 'full' | null
+function AppContent() {
+  const [override, setOverride] = useState(null);
   const [dayType, setDayType] = useState(null);
-  const [view, setView] = useState('today'); // 'today' | 'history' | 'progress'
-  const [exerciseHistory, setExerciseHistory] = useState(null); // { exerciseId, name } | null
-
+  const [view, setView] = useState('today');
+  const [exerciseHistory, setExerciseHistory] = useState(null);
+  const { profile, setProfile } = useProfile();
   const userId = 'demoUser';
 
   const handleViewHistory = (exerciseId, exerciseName) => {
@@ -72,37 +68,50 @@ export default function App() {
       <div className='app'>
         <div className='app-header'>
           <h1 className='app-title'>Workout App</h1>
-          <div className='view-nav'>
-            <button
-              className={`nav-btn ${view === 'today' && !exerciseHistory ? 'active' : ''}`}
-              onClick={() => {
-                setExerciseHistory(null);
-                setView('today');
-              }}
-            >
-              Today
-            </button>
-            <button
-              className={`nav-btn ${view === 'history' && !exerciseHistory ? 'active' : ''}`}
-              onClick={() => {
-                setExerciseHistory(null);
-                setView('history');
-              }}
-            >
-              History
-            </button>
-            <button
-              className={`nav-btn ${view === 'progress' && !exerciseHistory ? 'active' : ''}`}
-              onClick={() => {
-                setExerciseHistory(null);
-                setView('progress');
-              }}
-            >
-              Progress
-            </button>
+          <div className='app-header-right'>
+            <label className='weight-unit-toggle'>
+              <span className='weight-unit-label'>Weight:</span>
+              <select
+                value={profile.weightUnit}
+                onChange={(e) => setProfile({ weightUnit: e.target.value })}
+                className='weight-unit-select'
+                aria-label='Weight unit'
+              >
+                <option value='lb'>lb</option>
+                <option value='kg'>kg (2.5)</option>
+              </select>
+            </label>
+            <div className='view-nav'>
+              <button
+                className={`nav-btn ${view === 'today' && !exerciseHistory ? 'active' : ''}`}
+                onClick={() => {
+                  setExerciseHistory(null);
+                  setView('today');
+                }}
+              >
+                Today
+              </button>
+              <button
+                className={`nav-btn ${view === 'history' && !exerciseHistory ? 'active' : ''}`}
+                onClick={() => {
+                  setExerciseHistory(null);
+                  setView('history');
+                }}
+              >
+                History
+              </button>
+              <button
+                className={`nav-btn ${view === 'progress' && !exerciseHistory ? 'active' : ''}`}
+                onClick={() => {
+                  setExerciseHistory(null);
+                  setView('progress');
+                }}
+              >
+                Progress
+              </button>
+            </div>
           </div>
         </div>
-        {/* View switcher (moved into header) */}
         {/* ✅ INSERT THE DEV PANEL RIGHT BELOW THIS LINE */}
         <div
           style={{
@@ -190,5 +199,13 @@ export default function App() {
         )}
       </div>
     </ToastProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <ProfileProvider>
+      <AppContent />
+    </ProfileProvider>
   );
 }

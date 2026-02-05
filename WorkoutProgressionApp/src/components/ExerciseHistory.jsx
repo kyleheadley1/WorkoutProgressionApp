@@ -8,6 +8,13 @@ import {
 import { api } from '../lib/api';
 import { est1RM } from './ExerciseCard';
 import { getStrengthLevelComparison } from '../lib/strengthStandards';
+import { useProfile } from '../contexts/ProfileContext';
+import {
+  convertToLbs,
+  formatWeight,
+  getWeightStep,
+  getWeightUnitLabel,
+} from '../lib/weightUtils';
 
 const PROFILE_KEY = 'wp_profile_v1';
 
@@ -25,30 +32,13 @@ export default function ExerciseHistory({
   onBack,
   userId = 'demoUser',
 }) {
+  const { profile, setProfile } = useProfile();
+  const weightUnit = profile.weightUnit || 'lb';
   const [workouts, setWorkouts] = useState([]);
-  const [view, setView] = useState('trends'); // 'results' | 'trends' - default to trends when opened from history button
+  const [view, setView] = useState('trends');
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
-  const [profile, setProfile] = useState(() => {
-    if (typeof window === 'undefined') {
-      return { gender: 'male', bodyweight: 180 };
-    }
-    try {
-      const raw = window.localStorage.getItem(PROFILE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (
-          parsed &&
-          (parsed.gender === 'male' || parsed.gender === 'female') &&
-          Number.isFinite(parsed.bodyweight)
-        ) {
-          return parsed;
-        }
-      }
-    } catch {}
-    return { gender: 'male', bodyweight: 180 };
-  });
   const isBodyweightExercise = BODYWEIGHT_EXERCISES.has(exerciseId);
   const isPerHandExercise = PER_HAND_EXERCISES.has(exerciseId);
   const [form, setForm] = useState(() => ({
@@ -65,7 +55,7 @@ export default function ExerciseHistory({
           ...w,
           origin: 'local',
           exercises: (w.exercises || []).filter(
-            (e) => e.exerciseId === exerciseId
+            (e) => e.exerciseId === exerciseId,
           ),
         }))
         .filter((w) => w.exercises.length > 0);
@@ -80,7 +70,7 @@ export default function ExerciseHistory({
               ...w,
               origin: 'server',
               exercises: (w.exercises || []).filter(
-                (e) => e.exerciseId === exerciseId
+                (e) => e.exerciseId === exerciseId,
               ),
             }))
             .filter((w) => w.exercises.length > 0);
@@ -101,7 +91,7 @@ export default function ExerciseHistory({
       });
 
       const deduped = Array.from(seen.values()).sort(
-        (a, b) => new Date(b.date) - new Date(a.date)
+        (a, b) => new Date(b.date) - new Date(a.date),
       );
       setWorkouts(deduped);
     } finally {
@@ -112,14 +102,6 @@ export default function ExerciseHistory({
   useEffect(() => {
     loadWorkouts();
   }, [loadWorkouts]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-      } catch {}
-    }
-  }, [profile]);
 
   // Group workouts by date and separate warmup/working sets
   const groupedWorkouts = useMemo(() => {
@@ -167,14 +149,14 @@ export default function ExerciseHistory({
     groupedWorkouts.forEach((entry) => {
       if (entry.workingSets.length > 0) {
         const maxWeight = Math.max(
-          ...entry.workingSets.map((s) => s.weight || 0)
+          ...entry.workingSets.map((s) => s.weight || 0),
         );
         const maxWeightSet = entry.workingSets.find(
-          (s) => s.weight === maxWeight
+          (s) => s.weight === maxWeight,
         );
         const topReps = Math.max(
           ...entry.workingSets.map((s) => s.reps || 0),
-          0
+          0,
         );
         if (maxWeightSet) {
           const e1rm = est1RM(maxWeightSet.weight, maxWeightSet.reps);
@@ -184,7 +166,7 @@ export default function ExerciseHistory({
               weight: maxWeightSet.weight,
               reps: topReps,
             },
-            profile
+            profile,
           );
           data.push({
             date: entry.dateKey,
@@ -243,7 +225,11 @@ export default function ExerciseHistory({
       const clone = { weight: src?.weight ?? '', reps: src?.reps ?? '' };
       return {
         ...prev,
-        sets: [...prev.sets.slice(0, index + 1), clone, ...prev.sets.slice(index + 1)],
+        sets: [
+          ...prev.sets.slice(0, index + 1),
+          clone,
+          ...prev.sets.slice(index + 1),
+        ],
       };
     });
   };
@@ -269,17 +255,23 @@ export default function ExerciseHistory({
       return;
     }
 
-    // Validate all sets
+    // Validate all sets; store weight in lbs for DB/charts
     const setsArray = form.sets
       .map((set, idx) => {
         const reps = Number(set.reps);
-        const weight = isBodyweightExercise ? 0 : Number(set.weight);
+        const weightInput = Number(set.weight);
+        const weight = isBodyweightExercise
+          ? 0
+          : convertToLbs(weightInput, weightUnit);
 
         if (!Number.isFinite(reps) || reps <= 0) {
           setFormError(`Set ${idx + 1}: Reps must be a positive number.`);
           return null;
         }
-        if (!isBodyweightExercise && (!Number.isFinite(weight) || weight <= 0)) {
+        if (
+          !isBodyweightExercise &&
+          (!Number.isFinite(weightInput) || weightInput <= 0)
+        ) {
           setFormError(`Set ${idx + 1}: Weight must be a positive number.`);
           return null;
         }
@@ -301,7 +293,7 @@ export default function ExerciseHistory({
     // For exercises with <=5 sets: use top set (max weight)
     // For exercises with >5 sets: use max weight and corresponding reps
     const maxWeightSet = setsArray.reduce((max, set) =>
-      set.weight > max.weight ? set : max
+      set.weight > max.weight ? set : max,
     );
     const targetWeight = maxWeightSet.weight;
     // For <=5 sets, use top set reps; for >5 sets, use the reps from max weight set
@@ -350,7 +342,7 @@ export default function ExerciseHistory({
     const hasLocal = entry.sources?.some((src) => src.origin === 'local');
     if (!hasLocal) {
       setActionMessage(
-        'This record originates from the server and cannot be removed locally.'
+        'This record originates from the server and cannot be removed locally.',
       );
       return;
     }
@@ -423,15 +415,11 @@ export default function ExerciseHistory({
               />
             </label>
           </div>
-          
+
           <div className='sets-input-section'>
             <div className='sets-input-header'>
               <h4>Sets</h4>
-              <button
-                type='button'
-                onClick={addSet}
-                className='add-set-btn'
-              >
+              <button type='button' onClick={addSet} className='add-set-btn'>
                 + Add Set
               </button>
             </div>
@@ -443,16 +431,20 @@ export default function ExerciseHistory({
                 <div className='set-input-number'>Set {idx + 1}</div>
                 {!isBodyweightExercise && (
                   <label>
-                    Weight ({isPerHandExercise ? 'lb per dumbbell' : 'lb'})
+                    Weight (
+                    {isPerHandExercise
+                      ? `${getWeightUnitLabel(weightUnit)} per dumbbell`
+                      : getWeightUnitLabel(weightUnit)}
+                    )
                     <input
                       type='number'
                       min='0'
-                      step='2.5'
+                      step={getWeightStep(weightUnit)}
                       value={set.weight}
                       onChange={(e) =>
                         handleSetChange(idx, 'weight', e.target.value)
                       }
-                      placeholder='e.g. 130'
+                      placeholder={weightUnit === 'kg' ? 'e.g. 60' : 'e.g. 130'}
                     />
                   </label>
                 )}
@@ -493,7 +485,7 @@ export default function ExerciseHistory({
               </div>
             ))}
           </div>
-          
+
           <button type='submit' className='primary-btn'>
             Add to history
           </button>
@@ -523,7 +515,7 @@ export default function ExerciseHistory({
                 return e1rm > max ? e1rm : max;
               }, 0);
               const canDelete = entry.sources?.some(
-                (src) => src.origin === 'local'
+                (src) => src.origin === 'local',
               );
 
               return (
@@ -555,7 +547,8 @@ export default function ExerciseHistory({
                           <div key={i} className='set-item'>
                             <div className='set-number'>{set.setNumber}</div>
                             <div className='set-details'>
-                              {set.reps} reps x {set.weight} lb
+                              {set.reps} reps x{' '}
+                              {formatWeight(set.weight, weightUnit)}
                               {isPerHandExercise && (
                                 <span className='per-hand-indicator'>
                                   {' '}
@@ -577,7 +570,8 @@ export default function ExerciseHistory({
                           <div key={i} className='set-item'>
                             <div className='set-number'>{set.setNumber}</div>
                             <div className='set-details'>
-                              {set.reps} reps x {set.weight} lb
+                              {set.reps} reps x{' '}
+                              {formatWeight(set.weight, weightUnit)}
                               {isPerHandExercise && (
                                 <span className='per-hand-indicator'>
                                   {' '}
@@ -822,4 +816,3 @@ function getTimeAgo(date) {
   if (diffDays === 1) return '1 day ago';
   return `${diffDays} days ago`;
 }
-

@@ -5,6 +5,14 @@ import { canonicalizeExerciseId } from '../lib/aliases';
 import { api } from '../lib/api';
 import { enqueueSession } from '../lib/offlineQueue';
 import { useToast } from './ToastProvider';
+import { useProfile } from '../contexts/ProfileContext';
+import {
+  convertToLbs,
+  convertFromLbs,
+  roundForDisplay,
+  getWeightStep,
+  getWeightUnitLabel,
+} from '../lib/weightUtils';
 
 /** Map client dayType → server enum */
 function mapDayTypeToServer(dayType) {
@@ -96,12 +104,28 @@ function calculateWeightFrom1RM(referenceWeight, referenceReps, targetReps) {
   return estimated1RM * targetPercentage;
 }
 
-/** Row UI for a single set */
-function SetRow({ idx, value, onChange, isWarmup = false }) {
+/** Row UI for a single set. value.weight is always stored in lbs. */
+function SetRow({
+  idx,
+  value,
+  onChange,
+  isWarmup = false,
+  weightUnit = 'lb',
+  weightLabel = null,
+}) {
   const onReps = (e) =>
     onChange(idx, { ...value, reps: Number(e.target.value) || 0 });
-  const onWeight = (e) =>
-    onChange(idx, { ...value, weight: Number(e.target.value) || 0 });
+  const displayWeight =
+    weightUnit === 'kg'
+      ? roundForDisplay(convertFromLbs(value.weight, 'kg'), 'kg')
+      : value.weight;
+  const onWeight = (e) => {
+    const inputVal = Number(e.target.value) || 0;
+    const lbs = convertToLbs(inputVal, weightUnit);
+    onChange(idx, { ...value, weight: lbs });
+  };
+
+  const label = weightLabel ?? `Weight (${getWeightUnitLabel(weightUnit)})`;
 
   return (
     <div className={`set-row ${isWarmup ? 'warmup-set' : ''}`}>
@@ -120,18 +144,22 @@ function SetRow({ idx, value, onChange, isWarmup = false }) {
         />
       </div>
       <div className='set-cell'>
-        <label>Weight</label>
+        <label>{label}</label>
         <input
           type='number'
           min='0'
-          step='2.5'
-          value={value.weight}
+          step={getWeightStep(weightUnit)}
+          value={displayWeight}
           onChange={onWeight}
         />
       </div>
       <div className='set-cell e1rm'>
         <label>est-1RM</label>
-        <div className='ghost'>{est1RM(value.weight, value.reps) ?? '—'}</div>
+        <div className='ghost'>
+          {est1RM(value.weight, value.reps) != null
+            ? `${Math.round(est1RM(value.weight, value.reps))} lb`
+            : '—'}
+        </div>
       </div>
     </div>
   );
@@ -139,14 +167,16 @@ function SetRow({ idx, value, onChange, isWarmup = false }) {
 
 export default function ExerciseCard({
   userId,
-  dayType, // 'push' | 'pull' | 'legs' | 'upper' | 'lower' | 'full'
-  def, // { exerciseId, name, repScheme, startWeight, modality? }
-  recommendation, // { recommended: { weight, sets }, reason }
+  dayType,
+  def,
+  recommendation,
   onSaved,
-  onViewHistory, // (exerciseId, name) => void
-  onDataChange, // (exerciseId, data) => void - callback to expose current exercise data
+  onViewHistory,
+  onDataChange,
 }) {
   const toast = useToast();
+  const { profile } = useProfile();
+  const weightUnit = profile.weightUnit || 'lb';
   const { exerciseId, name, repScheme } = def;
   const { recommended } = recommendation || {};
   const restPeriod = def.rest ?? def.restPeriod ?? def.restTime ?? null;
@@ -174,7 +204,7 @@ export default function ExerciseCard({
   const isAMRAP = repScheme?.type === 'amrap';
   const targetReps = isCustomRepScheme
     ? repScheme.reps[0] // Use first rep count as default
-    : repScheme?.targetReps ?? repScheme?.minReps ?? 10;
+    : (repScheme?.targetReps ?? repScheme?.minReps ?? 10);
 
   // Derive "per-hand" display if this is a dumbbell movement
   const isDumbbell =
@@ -184,7 +214,7 @@ export default function ExerciseCard({
 
   const recTotal = Number.isFinite(recommended?.weight)
     ? recommended.weight
-    : def.startWeight ?? 0;
+    : (def.startWeight ?? 0);
   // For dumbbell exercises, recTotal is already per-hand weight
 
   // Calculate warmup weights
@@ -192,7 +222,7 @@ export default function ExerciseCard({
   const warmupWeights = useMemo(() => {
     if (hasWarmups && warmupPercentages.length > 0) {
       return warmupPercentages.map((percent) =>
-        roundToStep(recTotal * percent, rounding)
+        roundToStep(recTotal * percent, rounding),
       );
     }
     return [];
@@ -217,7 +247,7 @@ export default function ExerciseCard({
           const calculatedWeight = calculateWeightFrom1RM(
             recTotal,
             firstReps,
-            reps
+            reps,
           );
           const weight = roundToStep(calculatedWeight, rounding);
           return {
@@ -256,7 +286,7 @@ export default function ExerciseCard({
         const calculatedWeight = calculateWeightFrom1RM(
           recTotal,
           firstReps,
-          reps
+          reps,
         );
         const weight = roundToStep(calculatedWeight, rounding);
         return {
@@ -410,7 +440,15 @@ export default function ExerciseCard({
         <div className='pill'>Type: {serverType}</div>
         <div className='pill'>
           Recommended:{' '}
-          <b>{isDumbbell ? `${recTotal} lb / hand` : `${recTotal} lb`}</b>
+          <b>
+            {weightUnit === 'kg'
+              ? isDumbbell
+                ? `${roundForDisplay(convertFromLbs(recTotal, 'kg'), 'kg')} kg / hand`
+                : `${roundForDisplay(convertFromLbs(recTotal, 'kg'), 'kg')} kg`
+              : isDumbbell
+                ? `${recTotal} lb / hand`
+                : `${recTotal} lb`}
+          </b>
         </div>
         <div className='pill'>
           Sets: <b>{setsCount}</b>
@@ -438,6 +476,12 @@ export default function ExerciseCard({
             value={s}
             onChange={updateSet}
             isWarmup={s.isWarmup || false}
+            weightUnit={weightUnit}
+            weightLabel={
+              isDumbbell
+                ? `Weight (${getWeightUnitLabel(weightUnit)} / hand)`
+                : null
+            }
           />
         ))}
         <div className='setlist-actions'>

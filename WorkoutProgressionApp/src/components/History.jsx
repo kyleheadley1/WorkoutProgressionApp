@@ -11,6 +11,13 @@ import {
   findSimilarExercise,
   filterExercisesByQuery,
 } from '../lib/workoutDefinitions';
+import { useProfile } from '../contexts/ProfileContext';
+import {
+  convertToLbs,
+  formatWeight,
+  getWeightStep,
+  getWeightUnitLabel,
+} from '../lib/weightUtils';
 
 const DAY_TYPES = [
   { value: 'push', label: 'Push' },
@@ -56,15 +63,17 @@ function getDefaultSetsForDef(def) {
 }
 
 export default function History({ userId = 'demoUser' }) {
+  const { profile } = useProfile();
+  const weightUnit = profile.weightUnit || 'lb';
   const [workouts, setWorkouts] = useState([]);
-  const [addStep, setAddStep] = useState('date'); // 'date' | 'exercises'
+  const [addStep, setAddStep] = useState('date');
   const [addDate, setAddDate] = useState(() =>
     new Date().toISOString().slice(0, 10),
   );
   const [addDayType, setAddDayType] = useState('push');
-  const [addedExercises, setAddedExercises] = useState([]); // [{ exerciseId, name, modality, sets: [{ weight, reps }] }]
+  const [addedExercises, setAddedExercises] = useState([]);
   const [addExerciseQuery, setAddExerciseQuery] = useState('');
-  const [similarSuggestion, setSimilarSuggestion] = useState(null); // { exerciseId, name } when user typed something similar
+  const [similarSuggestion, setSimilarSuggestion] = useState(null);
   const [adding, setAdding] = useState(false);
   const [message, setMessage] = useState('');
   const [deleteConfirmingKey, setDeleteConfirmingKey] = useState(null);
@@ -232,9 +241,15 @@ export default function History({ userId = 'demoUser' }) {
       const setsArray = ex.sets
         .map((s, i) => {
           const reps = Number(s.reps);
-          const weight = isBodyweight ? 0 : Number(s.weight);
+          const weightInput = Number(s.weight);
+          const weight = isBodyweight
+            ? 0
+            : convertToLbs(weightInput, weightUnit);
           if (!Number.isFinite(reps) || reps <= 0) return null;
-          if (!isBodyweight && (!Number.isFinite(weight) || weight < 0))
+          if (
+            !isBodyweight &&
+            (!Number.isFinite(weightInput) || weightInput < 0)
+          )
             return null;
           return { setNumber: i + 1, reps, weight };
         })
@@ -494,11 +509,15 @@ export default function History({ userId = 'demoUser' }) {
                           <div className='set-input-number'>Set {idx + 1}</div>
                           {!isBodyweight && (
                             <label>
-                              Weight ({isPerHand ? 'lb per dumbbell' : 'lb'})
+                              Weight (
+                              {isPerHand
+                                ? `${getWeightUnitLabel(weightUnit)} per dumbbell`
+                                : getWeightUnitLabel(weightUnit)}
+                              )
                               <input
                                 type='number'
                                 min='0'
-                                step='2.5'
+                                step={getWeightStep(weightUnit)}
                                 value={set.weight}
                                 onChange={(e) =>
                                   updateSet(
@@ -508,7 +527,9 @@ export default function History({ userId = 'demoUser' }) {
                                     e.target.value,
                                   )
                                 }
-                                placeholder='e.g. 135'
+                                placeholder={
+                                  weightUnit === 'kg' ? 'e.g. 60' : 'e.g. 135'
+                                }
                               />
                             </label>
                           )}
@@ -638,7 +659,7 @@ export default function History({ userId = 'demoUser' }) {
                           {ex.sets
                             ?.map(
                               (s) =>
-                                `Set ${s.setNumber}: ${s.reps} reps @ ${s.weight} lb`,
+                                `Set ${s.setNumber}: ${s.reps} reps @ ${formatWeight(s.weight, weightUnit)}`,
                             )
                             .join(' • ')}
                         </div>
