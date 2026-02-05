@@ -8,16 +8,13 @@ export default function History({ userId = 'demoUser' }) {
   const [workouts, setWorkouts] = useState([]);
 
   useEffect(() => {
-    // Try loading local sessions first
     let local = readSessions(userId);
     setWorkouts(local);
 
-    // Then fetch server data if available
     (async () => {
       try {
         const serverData = await api.listWorkouts();
         if (serverData?.length) {
-          // Merge & dedupe by date
           const combined = [...serverData, ...local];
           const seen = new Set();
           const unique = combined.filter((w) => {
@@ -36,40 +33,48 @@ export default function History({ userId = 'demoUser' }) {
   }, [userId]);
 
   if (!workouts.length) {
-    return <div>No workouts logged yet.</div>;
+    return (
+      <div className='history-content'>
+        <h2 className='history-page-title'>Workout History</h2>
+        <div className='empty-state'>No workouts logged yet.</div>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: '10px' }}>
-      <h2>Workout History</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div className='history-content'>
+      <h2 className='history-page-title'>Workout History</h2>
+      <div className='workout-history-list'>
         {workouts.map((w, i) => (
-          <div
-            key={i}
-            style={{
-              background: '#fff',
-              borderRadius: 12,
-              padding: 12,
-              boxShadow: '0 2px 8px rgba(0,0,0,.08)',
-            }}
-          >
-            <h3 style={{ marginBottom: 4 }}>
-              {w.dayType?.toUpperCase() || 'Unknown'} —{' '}
-              {new Date(w.date).toLocaleDateString()}
-            </h3>
-            {w.exercises?.map((ex, j) => (
-              <div key={j} style={{ marginLeft: 12, marginBottom: 8 }}>
-                <strong>{getFriendlyName(ex.exerciseId)}</strong>
-                <div style={{ fontSize: 13, color: '#555' }}>
-                  {ex.sets
-                    ?.map(
-                      (s) =>
-                        `Set ${s.setNumber}: ${s.reps} reps @ ${s.weight} lb`
-                    )
-                    .join(' • ')}
+          <div key={i} className='workout-entry history-workout-card'>
+            <div className='workout-date-header'>
+              <h2 className='history-workout-day'>
+                {w.dayType?.toUpperCase() || 'Unknown'} —{' '}
+                {new Date(w.date).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </h2>
+            </div>
+            <div className='history-exercises'>
+              {w.exercises?.map((ex, j) => (
+                <div key={j} className='history-exercise-block'>
+                  <strong className='history-exercise-name'>
+                    {getFriendlyName(ex.exerciseId)}
+                  </strong>
+                  <div className='history-sets-summary'>
+                    {ex.sets
+                      ?.map(
+                        (s) =>
+                          `Set ${s.setNumber}: ${s.reps} reps @ ${s.weight} lb`,
+                      )
+                      .join(' • ')}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         ))}
       </div>
