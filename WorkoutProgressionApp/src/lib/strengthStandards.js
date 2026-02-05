@@ -18,9 +18,43 @@ const ALIASES = {
   gobletSquats: 'dumbbellGobletSquat',
   dumbbellGobletSquat: 'dumbbellGobletSquat',
   dumbbellRow: 'singleArmDumbbellRow',
+  lateralRaises: 'dumbbellLateralRaise',
+  preacherCurls: 'preacherCurl',
+  // User-added / manual entry IDs and legacy custom-* slugs → map to closest standard
+  'custom-barbell-bench-press': 'barbellBenchPress',
+  'custom-barbell-incline-bench-press': 'dumbbellInclineBenchPress',
+  barbellInclineBenchPress: 'dumbbellInclineBenchPress',
 };
 
 const STANDARDS = {
+  // Barbell Bench Press (total bar weight). Source: strengthlevel.com/strength-standards/bench-press
+  barbellBenchPress: {
+    metric: 'weight',
+    unit: 'lb',
+    source: 'https://strengthlevel.com/strength-standards/bench-press',
+    base: {
+      male: {
+        bodyweight: 180,
+        points: [
+          { percentile: 5, label: 'Beginner', value: 121 },
+          { percentile: 20, label: 'Novice', value: 166 },
+          { percentile: 50, label: 'Intermediate', value: 221 },
+          { percentile: 80, label: 'Advanced', value: 284 },
+          { percentile: 95, label: 'Elite', value: 352 },
+        ],
+      },
+      female: {
+        bodyweight: 150,
+        points: [
+          { percentile: 5, label: 'Beginner', value: 43 },
+          { percentile: 20, label: 'Novice', value: 74 },
+          { percentile: 50, label: 'Intermediate', value: 114 },
+          { percentile: 80, label: 'Advanced', value: 163 },
+          { percentile: 95, label: 'Elite', value: 218 },
+        ],
+      },
+    },
+  },
   dumbbellBenchPress: {
     metric: 'perHandWeight',
     unit: 'lb',
@@ -52,8 +86,7 @@ const STANDARDS = {
   singleArmDumbbellRow: {
     metric: 'perHandWeight',
     unit: 'lb',
-    source:
-      'https://strengthlevel.com/strength-standards/one-arm-dumbbell-row',
+    source: 'https://strengthlevel.com/strength-standards/one-arm-dumbbell-row',
     base: {
       male: {
         bodyweight: 180,
@@ -80,7 +113,8 @@ const STANDARDS = {
   dumbbellLateralRaise: {
     metric: 'perHandWeight',
     unit: 'lb',
-    source: 'https://strengthlevel.com/strength-standards/dumbbell-lateral-raise',
+    source:
+      'https://strengthlevel.com/strength-standards/dumbbell-lateral-raise',
     base: {
       male: {
         bodyweight: 180,
@@ -216,7 +250,8 @@ const STANDARDS = {
     metric: 'weight',
     isDumbbell: true,
     unit: 'lb',
-    source: 'https://strengthlevel.com/strength-standards/dumbbell-goblet-squat',
+    source:
+      'https://strengthlevel.com/strength-standards/dumbbell-goblet-squat',
     base: {
       male: {
         bodyweight: 180,
@@ -533,7 +568,7 @@ function getBaseForProfile(standard, profile = {}) {
 export function getStrengthLevelComparison(
   exerciseId,
   metrics = {},
-  profile = { gender: 'male', bodyweight: 180 }
+  profile = { gender: 'male', bodyweight: 180 },
 ) {
   const resolved = resolveExerciseId(exerciseId);
   if (!resolved) return null;
@@ -552,9 +587,9 @@ export function getStrengthLevelComparison(
     // If our exercise is a dumbbell movement but the standard is NOT dumbbell-specific,
     // double per-hand weight to total system weight before comparing.
     const isDumbbellExercise =
-      /dumbbell/i.test(exerciseId || '') ||
-      /db\b/i.test(exerciseId || '');
-    const isDumbbellStandard = standard.metric === 'perHandWeight' || standard.isDumbbell === true;
+      /dumbbell/i.test(exerciseId || '') || /db\b/i.test(exerciseId || '');
+    const isDumbbellStandard =
+      standard.metric === 'perHandWeight' || standard.isDumbbell === true;
     const raw = Number(metrics.weight);
     if (!Number.isFinite(raw)) return null;
     value = isDumbbellExercise && !isDumbbellStandard ? raw * 2 : raw;
@@ -582,4 +617,3 @@ export function getStrengthLevelComparison(
     source: standard.source,
   };
 }
-
