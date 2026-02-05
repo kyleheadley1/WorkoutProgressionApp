@@ -1,6 +1,6 @@
 // src/lib/weightUtils.js
 // All stored weights are in lbs. Convert to/from kg for display and input.
-// Kg input uses step 1 (so e.g. 8 is valid); lb uses step 2.5.
+// Kg input uses step 0.5 (so 8 and 17.5 are valid); lb uses step 2.5.
 
 const LBS_PER_KG = 2.20462262185;
 
@@ -36,9 +36,9 @@ export function formatWeight(lbs, unit) {
   return unit === 'kg' ? `${display} kg` : `${display} lb`;
 }
 
-/** Input step: for kg use 1 (so 1–9 and 8 are valid); for lb use 2.5. */
+/** Input step: for kg use 0.5 (so 1–9 and 8, and 10/12.5/15/17.5/20… are valid); for lb use 2.5. */
 export function getWeightStep(unit) {
-  return unit === 'kg' ? 1 : 2.5;
+  return unit === 'kg' ? 0.5 : 2.5;
 }
 
 export function getWeightUnitLabel(unit) {
