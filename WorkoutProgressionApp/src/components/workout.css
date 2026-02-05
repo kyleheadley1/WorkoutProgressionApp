@@ -418,11 +418,179 @@ h2 {
   margin: 0;
 }
 
+/* Manual add exercise: dropdown + search + suggestions */
+.add-exercise-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.add-exercise-dropdown-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+}
+
+.add-exercise-select {
+  min-width: 220px;
+}
+
+.add-exercise-search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+}
+
+.add-exercise-search-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-exercise-input {
+  min-width: 200px;
+}
+
+.add-exercise-suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  max-height: 220px;
+  overflow-y: auto;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+
+.add-exercise-suggestion-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+  border: none;
+  background: none;
+  font-size: 14px;
+  color: #1a1d29;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.add-exercise-suggestion-btn:hover {
+  background: #f0f0f0;
+}
+
+.add-exercise-add-btn {
+  align-self: flex-start;
+}
+
+.add-exercise-similar-banner {
+  background: #fff8e6;
+  border: 1px solid #f0d675;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.add-exercise-similar-text {
+  margin: 0;
+  font-size: 14px;
+  color: #555;
+  flex: 1;
+}
+
+.add-exercise-use-btn {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.add-past-workout-exercise-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.add-past-workout-exercise-block-header .add-past-workout-exercise-name {
+  margin: 0;
+}
+
+.add-exercise-remove {
+  flex-shrink: 0;
+}
+
 .history-no-exercises {
   font-size: 13px;
   color: #888;
   font-style: italic;
   padding: 8px 0;
+}
+
+/* Delete workout button and confirmation */
+.history-delete-btn {
+  padding: 6px 14px;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  background: #f8d7da;
+  color: #721c24;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border 0.2s;
+  flex-shrink: 0;
+}
+
+.history-delete-btn:hover {
+  background: #f1b0b7;
+  border-color: #f1b0b7;
+}
+
+.history-delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.history-delete-confirm-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+}
+
+.history-delete-confirm-yes {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #c0392b;
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.history-delete-confirm-yes:hover {
+  background: #a5281a;
 }
 
 .exercise-history {

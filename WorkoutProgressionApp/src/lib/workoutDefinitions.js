@@ -249,7 +249,104 @@ const BY_DAY = {
   full: FULL_DEFS,
 };
 
+const ALL_DEFS_FLAT = [
+  ...PUSH_DEFS,
+  ...PULL_DEFS,
+  ...LEGS_DEFS,
+  ...UPPER_DEFS,
+  ...LOWER_DEFS,
+  ...FULL_DEFS,
+];
+
+/** Unique exercise defs by exerciseId (first occurrence wins). Used for manual add-past-workout. */
+let _allExerciseDefsCache = null;
+export function getAllExerciseDefs() {
+  if (_allExerciseDefsCache) return _allExerciseDefsCache;
+  const seen = new Set();
+  _allExerciseDefsCache = ALL_DEFS_FLAT.filter((d) => {
+    if (seen.has(d.exerciseId)) return false;
+    seen.add(d.exerciseId);
+    return true;
+  });
+  return _allExerciseDefsCache;
+}
+
+export function getDefByExerciseId(exerciseId) {
+  return getAllExerciseDefs().find((d) => d.exerciseId === exerciseId) || null;
+}
+
 export function getDefsForDayType(dayType) {
   const key = (dayType || '').toLowerCase();
   return BY_DAY[key] || [];
+}
+
+/** Normalize for comparison: lowercase, single spaces. */
+function normalize(s) {
+  return (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * Find an exact match by name or exerciseId.
+ */
+export function findExactExercise(query, allDefs) {
+  const q = normalize(query);
+  if (!q) return null;
+  return (
+    allDefs.find(
+      (d) =>
+        normalize(d.name) === q ||
+        d.exerciseId.toLowerCase() === q.replace(/\s/g, ''),
+    ) || null
+  );
+}
+
+/**
+ * Find a similar (but not exact) exercise to suggest "Did you mean X?".
+ * Returns the best match if similarity is high enough.
+ */
+export function findSimilarExercise(query, allDefs) {
+  const q = normalize(query);
+  if (!q || q.length < 2) return null;
+  const exact = findExactExercise(query, allDefs);
+  if (exact) return null; // no "similar" if exact exists
+
+  let best = null;
+  let bestScore = 0;
+
+  for (const d of allDefs) {
+    const name = normalize(d.name);
+    // Substring: typed is inside name or name is inside typed
+    if (name.includes(q) || q.includes(name)) {
+      const score =
+        Math.min(name.length, q.length) / Math.max(name.length, q.length);
+      if (score > bestScore) {
+        bestScore = score;
+        best = d;
+      }
+    }
+    // Word overlap: majority of query words appear in name
+    const qWords = q.split(/\s+/).filter(Boolean);
+    const nameWords = new Set(name.split(/\s+/));
+    const matchCount = qWords.filter(
+      (w) => nameWords.has(w) || name.includes(w),
+    ).length;
+    const wordScore = matchCount / qWords.length;
+    if (wordScore >= 0.6 && wordScore > bestScore) {
+      bestScore = wordScore;
+      best = d;
+    }
+  }
+
+  return bestScore >= 0.5 ? best : null;
+}
+
+/**
+ * Filter stored exercises by query for predictive text (contains, case-insensitive).
+ */
+export function filterExercisesByQuery(query, allDefs, limit = 10) {
+  const q = (query || '').toLowerCase().trim();
+  if (!q) return [];
+  return allDefs
+    .filter((d) => d.name.toLowerCase().includes(q))
+    .slice(0, limit);
 }

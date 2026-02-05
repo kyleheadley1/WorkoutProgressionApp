@@ -48,8 +48,8 @@ export function getHistoryForExercise(userId, exerciseId, limit = 10) {
     .filter((s) => s.userId === userId)
     .flatMap((s) =>
       (s.exercises || []).filter(
-        (e) => canonicalizeExerciseId(e.exerciseId) === canonical
-      )
+        (e) => canonicalizeExerciseId(e.exerciseId) === canonical,
+      ),
     );
   return filtered.slice(-limit);
 }
@@ -65,7 +65,11 @@ export function getSessionsBetween(userId, start, end) {
 }
 
 export function getLastWeight(userId, exerciseId) {
-  const hist = getHistoryForExercise(userId, canonicalizeExerciseId(exerciseId), 1);
+  const hist = getHistoryForExercise(
+    userId,
+    canonicalizeExerciseId(exerciseId),
+    1,
+  );
   if (!hist.length) return null;
   return hist[0]?.target?.weight ?? null;
 }
@@ -152,12 +156,29 @@ export function deleteExerciseSession(userId, exerciseId, dateKey) {
       return;
     }
     const remainingExercises = (session.exercises || []).filter(
-      (ex) => ex.exerciseId !== exerciseId
+      (ex) => ex.exerciseId !== exerciseId,
     );
     if (remainingExercises.length) {
       next.push({ ...session, exercises: remainingExercises });
     }
     // Otherwise drop the session entirely.
+  });
+  writeAll(next);
+}
+
+/** Delete an entire workout session from local storage by date and day type. */
+export function deleteSession(userId, date, dayType) {
+  const list = readAll();
+  const dateKey = new Date(date).toISOString().slice(0, 10);
+  const next = list.filter((session) => {
+    if (session.userId !== userId) return true;
+    const sessionDate = new Date(session.date);
+    const sessionKey = Number.isNaN(sessionDate.getTime())
+      ? ''
+      : sessionDate.toISOString().slice(0, 10);
+    return !(
+      sessionKey === dateKey && (session.dayType || session.type) === dayType
+    );
   });
   writeAll(next);
 }
