@@ -21,6 +21,29 @@ body {
   background: #f8f9fa;
 }
 
+/* All manual entry fields: black text for readability */
+.app input,
+.app textarea,
+.app select {
+  color: #000 !important;
+}
+
+.app input::placeholder,
+.app textarea::placeholder {
+  color: #333 !important;
+}
+
+.app select option {
+  color: #000 !important;
+}
+
+/* Keep header controls readable on dark background */
+.app-header input,
+.app-header select,
+.app-header select option {
+  color: #fff !important;
+}
+
 .app-header {
   background: linear-gradient(135deg, #1a1d29 0%, #2d3142 100%);
   color: white;
