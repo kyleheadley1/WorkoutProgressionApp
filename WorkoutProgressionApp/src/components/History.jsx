@@ -25,6 +25,27 @@ const PER_HAND_EXERCISES = new Set(['dumbbellBenchPress', 'trapBarDeadlift']);
 
 const ALL_STORED_DEFS = getAllExerciseDefs();
 
+const CUSTOM_PREFIX = 'custom-';
+
+function slugify(s) {
+  const slug = (s || '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+  return slug || 'unknown';
+}
+
+function makeCustomDef(displayName) {
+  const name = displayName.trim();
+  return {
+    exerciseId: CUSTOM_PREFIX + slugify(name),
+    name,
+    modality: undefined,
+    repScheme: { sets: 1 },
+  };
+}
+
 function getDefaultSetsForDef(def) {
   const scheme = def?.repScheme || {};
   const count = scheme.sets ?? 3;
@@ -178,9 +199,9 @@ export default function History({ userId = 'demoUser' }) {
       );
       return;
     }
-    setMessage(
-      'No matching exercise. Pick from the dropdown or check spelling.',
-    );
+    // New exercise: add it so it can be saved to the workout/database
+    addExerciseByDef(makeCustomDef(query));
+    setMessage('');
   };
 
   const handleDeleteWorkout = async (w) => {
@@ -224,7 +245,7 @@ export default function History({ userId = 'demoUser' }) {
       const maxWeightSet = setsArray.reduce((max, s) =>
         s.weight > max.weight ? s : max,
       );
-      exercises.push({
+      const payload = {
         exerciseId: canonicalizeExerciseId(ex.exerciseId),
         target: {
           weight: maxWeightSet.weight,
@@ -232,7 +253,11 @@ export default function History({ userId = 'demoUser' }) {
           sets: setsArray.length,
         },
         sets: setsArray,
-      });
+      };
+      if (ex.exerciseId.startsWith(CUSTOM_PREFIX)) {
+        payload.name = ex.name;
+      }
+      exercises.push(payload);
     }
 
     if (exercises.length === 0) {
@@ -322,8 +347,9 @@ export default function History({ userId = 'demoUser' }) {
               {addDayType.toUpperCase()} — {addDate}
             </h3>
             <p className='add-past-workout-subtitle'>
-              Add exercises using the dropdown or type to search. Use stored
-              exercises so entries appear in history and trends.
+              Add exercises from the dropdown, search for existing ones, or type
+              a new exercise name to add it—new exercises are saved with the
+              workout.
             </p>
           </div>
 
@@ -606,7 +632,7 @@ export default function History({ userId = 'demoUser' }) {
                     w.exercises.map((ex, j) => (
                       <div key={j} className='history-exercise-block'>
                         <strong className='history-exercise-name'>
-                          {getFriendlyName(ex.exerciseId)}
+                          {ex.name || getFriendlyName(ex.exerciseId)}
                         </strong>
                         <div className='history-sets-summary'>
                           {ex.sets
