@@ -6,7 +6,7 @@ import {
   deleteExerciseSession,
 } from '../lib/storage';
 import { api } from '../lib/api';
-import { est1RM } from './ExerciseCard';
+import { est1RM, est1RMFromWorkingSets } from './ExerciseCard';
 import { getStrengthLevelComparison } from '../lib/strengthStandards';
 import { useProfile } from '../contexts/ProfileContext';
 import {
@@ -223,11 +223,14 @@ export default function ExerciseHistory({
           0,
         );
         if (maxWeightSet) {
-          const e1rm = est1RM(maxWeightSet.weight, maxWeightSet.reps);
+          const e1rm =
+            est1RMFromWorkingSets(entry.workingSets) ??
+            est1RM(maxWeightSet.weight, maxWeightSet.reps);
+          // Use multi-set estimated 1RM for strength comparison; standards are 1RM-based
           const population = getStrengthLevelComparison(
             exerciseId,
             {
-              weight: maxWeightSet.weight,
+              weight: e1rm,
               reps: topReps,
             },
             profile,
@@ -259,12 +262,14 @@ export default function ExerciseHistory({
           (s) => s.weight === maxWeight,
         );
         if (maxWeightSet) {
-          const e1rm = est1RM(maxWeightSet.weight, maxWeightSet.reps);
+          const e1rm =
+            est1RMFromWorkingSets(entry.workingSets) ??
+            est1RM(maxWeightSet.weight, maxWeightSet.reps);
           data.push({
             date: entry.dateKey,
             dateObj: entry.date,
             weight: maxWeightSet.weight * scale,
-            e1rm: e1rm * scale,
+            e1rm: (e1rm ?? 0) * scale,
           });
         }
       }
@@ -630,10 +635,12 @@ export default function ExerciseHistory({
             </div>
           ) : (
             groupedWorkouts.map((entry, idx) => {
-              const maxE1RM = entry.workingSets.reduce((max, set) => {
-                const e1rm = est1RM(set.weight, set.reps);
-                return e1rm > max ? e1rm : max;
-              }, 0);
+              const maxE1RM =
+                est1RMFromWorkingSets(entry.workingSets) ??
+                entry.workingSets.reduce((max, set) => {
+                  const e1rm = est1RM(set.weight, set.reps);
+                  return e1rm > max ? e1rm : max;
+                }, 0);
               const canDelete = entry.sources?.some(
                 (src) => src.origin === 'local',
               );

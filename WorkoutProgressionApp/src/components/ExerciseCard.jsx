@@ -41,6 +41,30 @@ export function est1RM(weight, reps) {
   return Math.round(weight * (1 + reps / 30));
 }
 
+/**
+ * Multi-set 1RM estimate: uses all working sets to better reflect volume/hypertrophy sessions.
+ * - Uses the heaviest weight; at that weight, the first set is treated as "fresh" (least fatigued).
+ * - If reps drop across sets at the same weight (e.g. 8, 8, 7), adds a small "freshness" bump so
+ *   the estimate reflects that a true fresh set would yield more reps → slightly higher 1RM.
+ * @param {Array<{ weight?: number, reps?: number }>} workingSets - sets from the session
+ * @returns {number|null} estimated 1RM or null
+ */
+export function est1RMFromWorkingSets(workingSets) {
+  const valid = (workingSets || []).filter(
+    (s) => Number.isFinite(s?.weight) && Number.isFinite(s?.reps) && s.reps > 0,
+  );
+  if (valid.length === 0) return null;
+  if (valid.length === 1) return est1RM(valid[0].weight, valid[0].reps);
+
+  const maxWeight = Math.max(...valid.map((s) => s.weight));
+  const setsAtTopWeight = valid.filter((s) => s.weight === maxWeight);
+  const firstReps = setsAtTopWeight[0].reps;
+  const minReps = Math.min(...setsAtTopWeight.map((s) => s.reps));
+  const repDropOff = firstReps - minReps;
+  const effectiveReps = firstReps + Math.min(2, repDropOff);
+  return est1RM(maxWeight, effectiveReps);
+}
+
 /** Round to nearest step (e.g., 2.5) */
 function roundToStep(value, step = 2.5) {
   if (!isFinite(value)) return 0;
