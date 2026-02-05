@@ -29,7 +29,7 @@ const defs = [
     repScheme: { type: "fixed", targetReps: 12, sets: 2 }, failurePolicy: { repeatFailures: 2, deloadPercent: 0.1 } },
 ];
 
-export default function Push({ userId = "demoUser" }) {
+export default function Push({ userId = "demoUser", onViewHistory }) {
   const { items, loading } = useRecommendations(userId, defs);
 
   return (
@@ -44,6 +44,7 @@ export default function Push({ userId = "demoUser" }) {
               dayType="push"
               def={defs[idx]}
               recommendation={rec}
+              onViewHistory={onViewHistory}
             />
           ))}
       </div>

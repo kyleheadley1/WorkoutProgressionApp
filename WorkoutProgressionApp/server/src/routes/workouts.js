@@ -6,12 +6,38 @@ import Workout from '../models/workoutModel.js'; // you already have this model
 
 const r = Router();
 
+// Canonicalize exercise ids on the server to keep history consistent.
+function canonicalizeExerciseId(exerciseId) {
+  const map = {
+    pullUp: 'pullUps',
+    dumbbellRow: 'singleArmDumbbellRow',
+    dumbbellRDL: 'romanianDeadlifts',
+    dumbbellRomanianDeadlift: 'romanianDeadlifts',
+    romanianDeadlifts: 'romanianDeadlifts',
+    gobletSquats: 'dumbbellGobletSquat',
+    dumbbellGobletSquat: 'dumbbellGobletSquat',
+    dumbbellLateraRaise: 'dumbbellLateralRaise',
+    diamondPushUp: 'diamondPushups',
+  };
+  return map[exerciseId] || exerciseId;
+}
+function normalizePayload(body) {
+  const cloned = { ...body };
+  if (Array.isArray(cloned.exercises)) {
+    cloned.exercises = cloned.exercises.map((ex) => ({
+      ...ex,
+      exerciseId: canonicalizeExerciseId(ex.exerciseId),
+    }));
+  }
+  return cloned;
+}
+
 // CREATE
 r.post('/', async (req, res) => {
   try {
     // const { value, error } = workoutSchema.validate(req.body, { abortEarly: false });
     // if (error) return res.status(400).json({ error: 'Validation failed', details: error.details.map(d => d.message) });
-    const doc = await Workout.create(req.body /* or value */);
+    const doc = await Workout.create(normalizePayload(req.body) /* or value */);
     res.status(201).json(doc);
   } catch (e) {
     res.status(400).json({ error: e.message });

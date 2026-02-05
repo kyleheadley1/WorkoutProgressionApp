@@ -53,7 +53,7 @@ const defs = [
   },
 ];
 
-export default function Pull({ userId = 'demoUser' }) {
+export default function Pull({ userId = 'demoUser', onViewHistory }) {
   const { items, loading } = useRecommendations(userId, defs);
 
   return (
@@ -70,6 +70,7 @@ export default function Pull({ userId = 'demoUser' }) {
               dayType='pull'
               def={defs[idx]}
               recommendation={rec}
+              onViewHistory={onViewHistory}
             />
           ))
         )}

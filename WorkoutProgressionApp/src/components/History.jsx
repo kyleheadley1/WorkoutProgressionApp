@@ -1,5 +1,6 @@
 // src/components/History.jsx
 import React, { useEffect, useState } from 'react';
+import { getFriendlyName } from '../lib/aliases';
 import { readSessions } from '../lib/storage';
 import { api } from '../lib/api';
 
@@ -58,14 +59,12 @@ export default function History({ userId = 'demoUser' }) {
             </h3>
             {w.exercises?.map((ex, j) => (
               <div key={j} style={{ marginLeft: 12, marginBottom: 8 }}>
-                <strong>{ex.exerciseId}</strong>
+                <strong>{getFriendlyName(ex.exerciseId)}</strong>
                 <div style={{ fontSize: 13, color: '#555' }}>
                   {ex.sets
                     ?.map(
-                      (s, k) =>
-                        `Set ${s.setNumber}: ${s.reps} reps @ ${s.weight} lb${
-                          s.rpe ? ` (RPE ${s.rpe})` : ''
-                        }`
+                      (s) =>
+                        `Set ${s.setNumber}: ${s.reps} reps @ ${s.weight} lb`
                     )
                     .join(' • ')}
                 </div>

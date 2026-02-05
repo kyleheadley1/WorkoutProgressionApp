@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
+import { canonicalizeExerciseId } from '../../lib/aliases';
 import { est1RM } from '../ExerciseCard'; // reuse estimator
 
 function flatten(workouts) {
@@ -9,7 +10,7 @@ function flatten(workouts) {
       for (const set of ex.sets || []) {
         rows.push({
           date: new Date(w.date),
-          exerciseId: ex.exerciseId,
+          exerciseId: canonicalizeExerciseId(ex.exerciseId),
           reps: set.reps,
           weight: set.weight,
         });
@@ -27,7 +28,8 @@ export default function ExerciseProgress({ exerciseId, title }) {
     (async () => {
       const data = await api.listWorkouts();
       if (!ok) return;
-      const flat = flatten(data).filter((r) => r.exerciseId === exerciseId);
+      const canon = canonicalizeExerciseId(exerciseId);
+      const flat = flatten(data).filter((r) => r.exerciseId === canon);
       // per day: pick top set weight (heaviest)
       const byDay = new Map();
       for (const r of flat) {
@@ -52,30 +54,43 @@ export default function ExerciseProgress({ exerciseId, title }) {
   const data = rows;
 
   // Lazy load recharts to avoid blocking initial load
-  const Charts = useMemo(async () => {
-    const recharts = await import('recharts');
-    return {
-      LineChart: recharts.LineChart,
-      Line: recharts.Line,
-      CartesianGrid: recharts.CartesianGrid,
-      XAxis: recharts.XAxis,
-      YAxis: recharts.YAxis,
-      Tooltip: recharts.Tooltip,
-      ResponsiveContainer: recharts.ResponsiveContainer,
-      Legend: recharts.Legend,
+  const [Charts, setCharts] = useState(null);
+  useEffect(() => {
+    let ok = true;
+    import('recharts').then((recharts) => {
+      if (!ok) return;
+      setCharts({
+        LineChart: recharts.LineChart,
+        Line: recharts.Line,
+        CartesianGrid: recharts.CartesianGrid,
+        XAxis: recharts.XAxis,
+        YAxis: recharts.YAxis,
+        Tooltip: recharts.Tooltip,
+        ResponsiveContainer: recharts.ResponsiveContainer,
+        Legend: recharts.Legend,
+      });
+    });
+    return () => {
+      ok = false;
     };
   }, []);
 
-  const {
-    LineChart,
-    Line,
-    CartesianGrid,
-    XAxis,
-    YAxis,
-    Tooltip,
-    ResponsiveContainer,
-    Legend,
-  } = Charts;
+  if (!Charts) {
+    return (
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: 12,
+          padding: 16,
+          boxShadow: '0 3px 14px rgba(0,0,0,.06)',
+        }}
+      >
+        <h3 style={{ margin: '0 0 10px' }}>{title}</h3>
+        <div style={{ padding: 20, color: '#666' }}>Loading charts…</div>
+      </div>
+    );
+  }
+  const { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } = Charts;
 
   return (
     <div
