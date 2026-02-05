@@ -32,21 +32,29 @@ const PER_HAND_EXERCISES = new Set(['dumbbellBenchPress', 'trapBarDeadlift']);
 
 const ALL_STORED_DEFS = getAllExerciseDefs();
 
-const CUSTOM_PREFIX = 'custom-';
-
-function slugify(s) {
-  const slug = (s || '')
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '');
-  return slug || 'unknown';
+/** Convert display name to a normal exerciseId (camelCase), e.g. "Barbell Bench Press" -> "barbellBenchPress" */
+function displayNameToExerciseId(displayName) {
+  const words = (displayName || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return 'unknown';
+  const first = words[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+  const rest = words
+    .slice(1)
+    .map(
+      (w) =>
+        w.charAt(0).toUpperCase() +
+        w
+          .slice(1)
+          .toLowerCase()
+          .replace(/[^a-z0-9]/gi, ''),
+    )
+    .join('');
+  return first + rest || 'unknown';
 }
 
 function makeCustomDef(displayName) {
   const name = displayName.trim();
   return {
-    exerciseId: CUSTOM_PREFIX + slugify(name),
+    exerciseId: displayNameToExerciseId(name),
     name,
     modality: undefined,
     repScheme: { sets: 1 },
@@ -62,7 +70,10 @@ function getDefaultSetsForDef(def) {
   }));
 }
 
-export default function History({ userId = 'demoUser' }) {
+export default function History({
+  userId = 'demoUser',
+  onViewExerciseHistory,
+}) {
   const { profile } = useProfile();
   const weightUnit = profile.weightUnit || 'lb';
   const [workouts, setWorkouts] = useState([]);
@@ -269,9 +280,7 @@ export default function History({ userId = 'demoUser' }) {
         },
         sets: setsArray,
       };
-      if (ex.exerciseId.startsWith(CUSTOM_PREFIX)) {
-        payload.name = ex.name;
-      }
+      if (ex.name) payload.name = ex.name;
       exercises.push(payload);
     }
 
@@ -652,9 +661,25 @@ export default function History({ userId = 'demoUser' }) {
                   {w.exercises?.length ? (
                     w.exercises.map((ex, j) => (
                       <div key={j} className='history-exercise-block'>
-                        <strong className='history-exercise-name'>
-                          {ex.name || getFriendlyName(ex.exerciseId)}
-                        </strong>
+                        <div className='history-exercise-block-row'>
+                          <strong className='history-exercise-name'>
+                            {ex.name || getFriendlyName(ex.exerciseId)}
+                          </strong>
+                          {onViewExerciseHistory && (
+                            <button
+                              type='button'
+                              onClick={() =>
+                                onViewExerciseHistory(
+                                  ex.exerciseId,
+                                  ex.name || getFriendlyName(ex.exerciseId),
+                                )
+                              }
+                              className='history-btn history-exercise-history-btn'
+                            >
+                              History
+                            </button>
+                          )}
+                        </div>
                         <div className='history-sets-summary'>
                           {ex.sets
                             ?.map(

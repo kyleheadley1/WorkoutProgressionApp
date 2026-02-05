@@ -43,6 +43,8 @@ const FRIENDLY_NAME = {
   skullCrushers: 'Skull-crushers',
   tricepKickback: 'Single-arm Tricep Kickback',
   trapBarDeadlift: 'Dumbbell Deadlift',
+  barbellBenchPress: 'Barbell Bench Press',
+  barbellInclineBenchPress: 'Barbell Incline Bench Press',
 };
 
 export function canonicalizeExerciseId(exerciseId) {
@@ -59,6 +61,3 @@ export const __ALIASES_INTERNAL = {
   EXERCISE_ID_ALIASES,
   FRIENDLY_NAME,
 };
-
-
-

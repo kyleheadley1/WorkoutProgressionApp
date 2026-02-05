@@ -187,7 +187,11 @@ function AppContent() {
             className='history-container'
             style={{ background: '#f3f4f5', padding: 24, borderRadius: 16 }}
           >
-            <History />
+            <History
+              onViewExerciseHistory={(exerciseId, name) =>
+                setExerciseHistory({ exerciseId, name })
+              }
+            />
           </div>
         ) : (
           <div

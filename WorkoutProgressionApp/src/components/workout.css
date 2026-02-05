@@ -309,6 +309,24 @@ h2 {
   gap: 12px;
 }
 
+.history-exercise-block-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.history-exercise-block-row .history-exercise-name {
+  margin: 0;
+}
+
+.history-exercise-history-btn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
 .history-exercise-block {
   padding: 10px 12px;
   background: #f8f9fa;

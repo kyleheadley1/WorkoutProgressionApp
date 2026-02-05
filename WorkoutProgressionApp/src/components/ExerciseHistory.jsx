@@ -15,6 +15,10 @@ import {
   getWeightStep,
   getWeightUnitLabel,
 } from '../lib/weightUtils';
+import {
+  getPairedExercise,
+  getPairedExerciseName,
+} from '../lib/exercisePairings';
 
 const PROFILE_KEY = 'wp_profile_v1';
 
@@ -35,8 +39,10 @@ export default function ExerciseHistory({
   const { profile, setProfile } = useProfile();
   const weightUnit = profile.weightUnit || 'lb';
   const [workouts, setWorkouts] = useState([]);
+  const [pairedWorkouts, setPairedWorkouts] = useState([]);
   const [view, setView] = useState('trends');
   const [loading, setLoading] = useState(false);
+  const pairInfo = getPairedExercise(exerciseId);
   const [formError, setFormError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const isBodyweightExercise = BODYWEIGHT_EXERCISES.has(exerciseId);
@@ -94,10 +100,49 @@ export default function ExerciseHistory({
         (a, b) => new Date(b.date) - new Date(a.date),
       );
       setWorkouts(deduped);
+
+      if (pairInfo?.pairedId) {
+        const localPair = allLocal
+          .map((w) => ({
+            ...w,
+            origin: 'local',
+            exercises: (w.exercises || []).filter(
+              (e) => e.exerciseId === pairInfo.pairedId,
+            ),
+          }))
+          .filter((w) => w.exercises.length > 0);
+        let combinedPair = [...localPair];
+        try {
+          const serverData = await api.listWorkouts();
+          if (serverData?.length) {
+            const serverPair = serverData
+              .map((w) => ({
+                ...w,
+                origin: 'server',
+                exercises: (w.exercises || []).filter(
+                  (e) => e.exerciseId === pairInfo.pairedId,
+                ),
+              }))
+              .filter((w) => w.exercises.length > 0);
+            combinedPair = [...serverPair, ...combinedPair];
+          }
+        } catch {}
+        const seenPair = new Map();
+        combinedPair.forEach((w) => {
+          const key = `${new Date(w.date).toISOString().slice(0, 10)}::${w.exercises?.[0]?.exerciseId || ''}`;
+          if (!seenPair.has(key) || w.origin === 'local') seenPair.set(key, w);
+        });
+        const dedupedPair = Array.from(seenPair.values()).sort(
+          (a, b) => new Date(b.date) - new Date(a.date),
+        );
+        setPairedWorkouts(dedupedPair);
+      } else {
+        setPairedWorkouts([]);
+      }
     } finally {
       setLoading(false);
     }
-  }, [userId, exerciseId]);
+  }, [userId, exerciseId, pairInfo?.pairedId]);
 
   useEffect(() => {
     loadWorkouts();
@@ -143,6 +188,25 @@ export default function ExerciseHistory({
     return Array.from(grouped.values()).sort((a, b) => b.date - a.date);
   }, [workouts, exerciseId]);
 
+  const groupedPairedWorkouts = useMemo(() => {
+    const grouped = new Map();
+    pairedWorkouts.forEach((w) => {
+      const date = new Date(w.date);
+      const dateKey = date.toISOString().slice(0, 10);
+      if (!grouped.has(dateKey)) {
+        grouped.set(dateKey, {
+          date,
+          dateKey,
+          workingSets: [],
+        });
+      }
+      const entry = grouped.get(dateKey);
+      const sets = w.exercises?.[0]?.sets || [];
+      sets.forEach((set) => entry.workingSets.push(set));
+    });
+    return Array.from(grouped.values()).sort((a, b) => b.date - a.date);
+  }, [pairedWorkouts]);
+
   // Calculate trend data
   const trendData = useMemo(() => {
     const data = [];
@@ -181,6 +245,62 @@ export default function ExerciseHistory({
     });
     return data.sort((a, b) => a.date.localeCompare(b.date));
   }, [groupedWorkouts, exerciseId, profile]);
+
+  const pairedTrendData = useMemo(() => {
+    if (!pairInfo) return [];
+    const scale = pairInfo.pairIsPerHand ? 2 : 0.5;
+    const data = [];
+    groupedPairedWorkouts.forEach((entry) => {
+      if (entry.workingSets.length > 0) {
+        const maxWeight = Math.max(
+          ...entry.workingSets.map((s) => s.weight || 0),
+        );
+        const maxWeightSet = entry.workingSets.find(
+          (s) => s.weight === maxWeight,
+        );
+        if (maxWeightSet) {
+          const e1rm = est1RM(maxWeightSet.weight, maxWeightSet.reps);
+          data.push({
+            date: entry.dateKey,
+            dateObj: entry.date,
+            weight: maxWeightSet.weight * scale,
+            e1rm: e1rm * scale,
+          });
+        }
+      }
+    });
+    return data.sort((a, b) => a.date.localeCompare(b.date));
+  }, [groupedPairedWorkouts, pairInfo]);
+
+  const mergedTrendData = useMemo(() => {
+    const byDate = new Map();
+    trendData.forEach((d) => {
+      byDate.set(d.date, {
+        ...d,
+        pairE1rm: undefined,
+        pairWeight: undefined,
+      });
+    });
+    pairedTrendData.forEach((d) => {
+      const existing = byDate.get(d.date);
+      if (existing) {
+        existing.pairE1rm = d.e1rm;
+        existing.pairWeight = d.weight;
+      } else {
+        byDate.set(d.date, {
+          date: d.date,
+          dateObj: d.dateObj,
+          weight: undefined,
+          e1rm: undefined,
+          pairE1rm: d.e1rm,
+          pairWeight: d.weight,
+        });
+      }
+    });
+    return Array.from(byDate.values()).sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
+  }, [trendData, pairedTrendData]);
 
   const handleProfileChange = (field, value) => {
     setProfile((prev) => ({
@@ -603,15 +723,24 @@ export default function ExerciseHistory({
         </div>
       ) : (
         <div className='trends-view'>
-          <TrendsCharts data={trendData} isPerHand={isPerHandExercise} />
+          <TrendsCharts
+            data={mergedTrendData}
+            isPerHand={isPerHandExercise}
+            pairLabel={
+              pairInfo ? getPairedExerciseName(pairInfo.pairedId) : null
+            }
+          />
         </div>
       )}
     </div>
   );
 }
 
-function TrendsCharts({ data, isPerHand }) {
+function TrendsCharts({ data, isPerHand, pairLabel }) {
   const [Charts, setCharts] = useState(null);
+  const hasPair = Boolean(
+    pairLabel && data.some((d) => d.pairE1rm != null || d.pairWeight != null),
+  );
 
   useEffect(() => {
     import('recharts').then((recharts) => {
@@ -644,9 +773,9 @@ function TrendsCharts({ data, isPerHand }) {
     YAxis,
     Tooltip,
     ResponsiveContainer,
+    Legend,
   } = Charts;
 
-  // Format dates for display
   const formattedData = data.map((d) => ({
     ...d,
     dateLabel: new Date(d.date).toLocaleDateString('en-US', {
@@ -655,13 +784,18 @@ function TrendsCharts({ data, isPerHand }) {
     }),
   }));
 
-  // Calculate Y-axis ranges
-  const e1rmValues = data.map((d) => d.e1rm).filter(Boolean);
-  const weightValues = data.map((d) => d.weight).filter(Boolean);
-  const e1rmMin = Math.min(...e1rmValues);
-  const e1rmMax = Math.max(...e1rmValues);
-  const weightMin = Math.min(...weightValues);
-  const weightMax = Math.max(...weightValues);
+  const e1rmValues = [
+    ...data.map((d) => d.e1rm).filter(Boolean),
+    ...(hasPair ? data.map((d) => d.pairE1rm).filter(Boolean) : []),
+  ];
+  const weightValues = [
+    ...data.map((d) => d.weight).filter(Boolean),
+    ...(hasPair ? data.map((d) => d.pairWeight).filter(Boolean) : []),
+  ];
+  const e1rmMin = e1rmValues.length ? Math.min(...e1rmValues) : 0;
+  const e1rmMax = e1rmValues.length ? Math.max(...e1rmValues) : 100;
+  const weightMin = weightValues.length ? Math.min(...weightValues) : 0;
+  const weightMax = weightValues.length ? Math.max(...weightValues) : 100;
   const latest = data[data.length - 1] || {};
   const comparison = latest.population;
 
@@ -693,7 +827,10 @@ function TrendsCharts({ data, isPerHand }) {
                 style={{ fontSize: '12px' }}
               />
               <YAxis
-                domain={[Math.floor(e1rmMin - 5), Math.ceil(e1rmMax + 5)]}
+                domain={[
+                  Math.max(0, Math.floor(e1rmMin - 5)),
+                  Math.ceil(e1rmMax + 5),
+                ]}
                 stroke='rgba(255,255,255,0.6)'
                 style={{ fontSize: '12px' }}
               />
@@ -704,14 +841,28 @@ function TrendsCharts({ data, isPerHand }) {
                   borderRadius: '8px',
                 }}
               />
+              {hasPair && <Legend />}
               <Line
                 type='monotone'
                 dataKey='e1rm'
+                name='Est. 1RM'
                 stroke='#ff4d61'
                 strokeWidth={2}
                 dot={{ fill: '#ff4d61', r: 4 }}
                 activeDot={{ r: 6 }}
               />
+              {hasPair && (
+                <Line
+                  type='monotone'
+                  dataKey='pairE1rm'
+                  name={pairLabel}
+                  stroke='rgba(255,255,255,0.5)'
+                  strokeWidth={1.5}
+                  strokeDasharray='4 4'
+                  dot={{ fill: 'rgba(255,255,255,0.4)', r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -780,7 +931,10 @@ function TrendsCharts({ data, isPerHand }) {
                 style={{ fontSize: '12px' }}
               />
               <YAxis
-                domain={[Math.floor(weightMin - 5), Math.ceil(weightMax + 5)]}
+                domain={[
+                  Math.max(0, Math.floor(weightMin - 5)),
+                  Math.ceil(weightMax + 5),
+                ]}
                 stroke='rgba(255,255,255,0.6)'
                 style={{ fontSize: '12px' }}
               />
@@ -791,14 +945,28 @@ function TrendsCharts({ data, isPerHand }) {
                   borderRadius: '8px',
                 }}
               />
+              {hasPair && <Legend />}
               <Line
                 type='monotone'
                 dataKey='weight'
+                name='Weight'
                 stroke='#ff4d61'
                 strokeWidth={2}
                 dot={{ fill: '#ff4d61', r: 4 }}
                 activeDot={{ r: 6 }}
               />
+              {hasPair && (
+                <Line
+                  type='monotone'
+                  dataKey='pairWeight'
+                  name={pairLabel}
+                  stroke='rgba(255,255,255,0.5)'
+                  strokeWidth={1.5}
+                  strokeDasharray='4 4'
+                  dot={{ fill: 'rgba(255,255,255,0.4)', r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         </div>
