@@ -5,6 +5,7 @@ import {
   readSessions,
   saveSession,
   deleteSession,
+  updateSession,
   getSavedUserExercises,
   addSavedUserExercise,
 } from '../lib/storage';
@@ -20,9 +21,11 @@ import {
 import { useProfile } from '../contexts/ProfileContext';
 import {
   convertToLbs,
+  convertFromLbs,
   formatWeight,
   getWeightStep,
   getWeightUnitLabel,
+  roundForDisplay,
 } from '../lib/weightUtils';
 
 const DAY_TYPES = [
@@ -93,6 +96,8 @@ export default function History({
   const [message, setMessage] = useState('');
   const [deleteConfirmingKey, setDeleteConfirmingKey] = useState(null);
   const [userExercisesVersion, setUserExercisesVersion] = useState(0);
+  const [editingWorkout, setEditingWorkout] = useState(null);
+  const [editExercises, setEditExercises] = useState([]);
 
   // Recompute when user adds a custom exercise so dropdown updates
   const allStoredDefs = React.useMemo(() => {
@@ -109,6 +114,27 @@ export default function History({
     (exerciseId) =>
       allStoredDefs.find((d) => d.exerciseId === exerciseId) || null,
     [allStoredDefs],
+  );
+
+  /** Convert a saved workout to the edit form shape (weight in display unit). */
+  const workoutToEditExercises = useCallback(
+    (w) =>
+      (w.exercises || []).map((ex) => {
+        const sets = (ex.sets || []).map((s) => ({
+          weight: String(
+            roundForDisplay(convertFromLbs(s.weight, weightUnit), weightUnit),
+          ),
+          reps: s.reps != null ? String(s.reps) : '',
+        }));
+        return {
+          exerciseId: ex.exerciseId,
+          name: ex.name,
+          modality: ex.modality,
+          sets: sets.length ? sets : [{ weight: '', reps: '' }],
+          manuallyEditedSetIndices: {},
+        };
+      }),
+    [weightUnit],
   );
 
   const loadWorkouts = useCallback(() => {
@@ -183,10 +209,11 @@ export default function History({
 
   const addExerciseByDef = (def) => {
     if (!def) return;
-    const already = addedExercises.some((e) => e.exerciseId === def.exerciseId);
+    const target = editingWorkout ? editExercises : addedExercises;
+    const already = target.some((e) => e.exerciseId === def.exerciseId);
     if (already) return;
-    setAddedExercises((prev) => [
-      ...prev,
+    const next = [
+      ...target,
       {
         exerciseId: def.exerciseId,
         name: def.name,
@@ -194,20 +221,22 @@ export default function History({
         sets: getDefaultSetsForDef(def),
         manuallyEditedSetIndices: {},
       },
-    ]);
+    ];
+    if (editingWorkout) setEditExercises(next);
+    else setAddedExercises(next);
     setAddExerciseQuery('');
     setSimilarSuggestion(null);
     setMessage('');
   };
 
   const removeExercise = (exerciseId) => {
-    setAddedExercises((prev) =>
-      prev.filter((e) => e.exerciseId !== exerciseId),
-    );
+    const setter = editingWorkout ? setEditExercises : setAddedExercises;
+    setter((prev) => prev.filter((e) => e.exerciseId !== exerciseId));
   };
 
   const updateSet = (exerciseId, setIndex, field, value) => {
-    setAddedExercises((prev) =>
+    const setter = editingWorkout ? setEditExercises : setAddedExercises;
+    setter((prev) =>
       prev.map((e) => {
         if (e.exerciseId !== exerciseId) return e;
         const edited = e.manuallyEditedSetIndices || {};
@@ -227,7 +256,8 @@ export default function History({
   };
 
   const addSet = (exerciseId) => {
-    setAddedExercises((prev) =>
+    const setter = editingWorkout ? setEditExercises : setAddedExercises;
+    setter((prev) =>
       prev.map((e) => {
         if (e.exerciseId !== exerciseId) return e;
         const sets = e.sets || [{ weight: '', reps: '' }];
@@ -241,7 +271,8 @@ export default function History({
   };
 
   const removeSet = (exerciseId, setIndex) => {
-    setAddedExercises((prev) =>
+    const setter = editingWorkout ? setEditExercises : setAddedExercises;
+    setter((prev) =>
       prev.map((e) => {
         if (e.exerciseId !== exerciseId || e.sets.length <= 1) return e;
         const edited = e.manuallyEditedSetIndices || {};
@@ -305,17 +336,21 @@ export default function History({
     loadWorkouts();
   };
 
-  const handleSavePastWorkout = async (e) => {
-    e.preventDefault();
+  const handleStartEdit = (w) => {
+    setEditingWorkout(w);
+    setEditExercises(workoutToEditExercises(w));
     setMessage('');
-    const date = new Date(`${addDate}T12:00:00`);
-    if (Number.isNaN(date.getTime())) {
-      setMessage('Please choose a valid date.');
-      return;
-    }
+  };
 
+  const handleCancelEdit = () => {
+    setEditingWorkout(null);
+    setEditExercises([]);
+    setMessage('');
+  };
+
+  const buildSessionFromExercises = (exercisesList) => {
     const exercises = [];
-    for (const ex of addedExercises) {
+    for (const ex of exercisesList) {
       const isBodyweight = ex.modality === 'bodyweight';
       const setsArray = ex.sets
         .map((s, i) => {
@@ -333,9 +368,7 @@ export default function History({
           return { setNumber: i + 1, reps, weight };
         })
         .filter(Boolean);
-
       if (setsArray.length === 0) continue;
-
       const maxWeightSet = setsArray.reduce((max, s) =>
         s.weight > max.weight ? s : max,
       );
@@ -350,6 +383,57 @@ export default function History({
       };
       if (ex.name) payload.name = ex.name;
       exercises.push(payload);
+    }
+    return exercises;
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    setMessage('');
+    const exercises = buildSessionFromExercises(editExercises);
+    if (exercises.length === 0) {
+      setMessage('Keep at least one exercise with at least one set (reps).');
+      return;
+    }
+    const dayType = editingWorkout.dayType || editingWorkout.type;
+    const session = {
+      userId,
+      date: editingWorkout.date,
+      dayType,
+      type: dayType,
+      exercises,
+    };
+    if (editingWorkout._id) session._id = editingWorkout._id;
+    setAdding(true);
+    try {
+      updateSession(userId, editingWorkout.date, dayType, session);
+      if (editingWorkout._id) {
+        await api.updateWorkout(editingWorkout._id, session);
+      }
+      setMessage(
+        'Workout updated. Trends and history will reflect the changes.',
+      );
+      setEditingWorkout(null);
+      setEditExercises([]);
+      loadWorkouts();
+    } catch (err) {
+      setMessage(err?.message || 'Failed to save changes.');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleSavePastWorkout = async (e) => {
+    e.preventDefault();
+    setMessage('');
+    const date = new Date(`${addDate}T12:00:00`);
+    if (Number.isNaN(date.getTime())) {
+      setMessage('Please choose a valid date.');
+      return;
+    }
+
+    const exercises = buildSessionFromExercises(addedExercises);
+    for (const ex of addedExercises) {
       if (!getDefByExerciseId(canonicalizeExerciseId(ex.exerciseId))) {
         addSavedUserExercise(
           canonicalizeExerciseId(ex.exerciseId),
@@ -396,11 +480,244 @@ export default function History({
     }
   };
 
+  const formExercises = editingWorkout ? editExercises : addedExercises;
+
   return (
     <div className='history-content'>
       <h2 className='history-page-title'>Workout History</h2>
 
-      {addStep === 'date' ? (
+      {editingWorkout ? (
+        <form
+          className='add-past-workout-form add-past-workout-form--exercises'
+          onSubmit={handleSaveEdit}
+        >
+          <div className='add-past-workout-exercises-header'>
+            <h3 className='add-past-workout-title'>
+              Edit workout —{' '}
+              {(editingWorkout.dayType || editingWorkout.type)?.toUpperCase()} —{' '}
+              {new Date(editingWorkout.date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </h3>
+            <p className='add-past-workout-subtitle'>
+              Change sets, reps, and weight. Add or remove exercises. Save to
+              update history and trends.
+            </p>
+          </div>
+          <div className='add-exercise-row'>
+            <label className='add-exercise-dropdown-wrap'>
+              <span className='add-past-workout-label'>Add from list</span>
+              <select
+                value=''
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  const def = getDefFromStored(id);
+                  addExerciseByDef(def);
+                  e.target.value = '';
+                }}
+                className='add-past-workout-select add-exercise-select'
+              >
+                <option value=''>Choose an exercise…</option>
+                {allStoredDefs.map((d) => (
+                  <option key={d.exerciseId} value={d.exerciseId}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className='add-exercise-search-wrap'>
+              <label className='add-exercise-search-label'>
+                <span className='add-past-workout-label'>Or search</span>
+                <input
+                  type='text'
+                  value={addExerciseQuery}
+                  onChange={(e) => {
+                    setAddExerciseQuery(e.target.value);
+                    setSimilarSuggestion(null);
+                    setMessage('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddByQuery();
+                    }
+                  }}
+                  placeholder='Type exercise name…'
+                  className='add-past-workout-input add-exercise-input'
+                />
+              </label>
+              {predictiveMatches.length > 0 && addExerciseQuery.trim() && (
+                <ul className='add-exercise-suggestions'>
+                  {predictiveMatches.map((d) => (
+                    <li key={d.exerciseId}>
+                      <button
+                        type='button'
+                        className='add-exercise-suggestion-btn'
+                        onClick={() => addExerciseByDef(d)}
+                      >
+                        {d.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <button
+                type='button'
+                onClick={handleAddByQuery}
+                className='ghost-btn add-exercise-add-btn'
+              >
+                Add
+              </button>
+            </div>
+          </div>
+          {similarSuggestion && (
+            <div className='add-exercise-similar-banner'>
+              <p className='add-exercise-similar-text'>
+                Use <strong>“{similarSuggestion.name}”</strong> so this appears
+                in your exercise history and trends.
+              </p>
+              <button
+                type='button'
+                onClick={() => {
+                  const def = getDefFromStored(similarSuggestion.exerciseId);
+                  addExerciseByDef(def);
+                }}
+                className='primary-btn add-exercise-use-btn'
+              >
+                Use “{similarSuggestion.name}”
+              </button>
+            </div>
+          )}
+          <div className='add-past-workout-exercise-list'>
+            {formExercises.map((ex) => {
+              const sets = ex.sets || [{ weight: '', reps: '' }];
+              const isBodyweight = ex.modality === 'bodyweight';
+              const isPerHand = PER_HAND_EXERCISES.has(ex.exerciseId);
+              return (
+                <div
+                  key={ex.exerciseId}
+                  className='add-past-workout-exercise-block'
+                >
+                  <div className='add-past-workout-exercise-block-header'>
+                    <h4 className='add-past-workout-exercise-name'>
+                      {ex.name || getFriendlyName(ex.exerciseId)}
+                    </h4>
+                    <button
+                      type='button'
+                      onClick={() => removeExercise(ex.exerciseId)}
+                      className='history-delete-btn add-exercise-remove'
+                      title='Remove exercise'
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className='sets-input-section'>
+                    <div className='sets-input-header'>
+                      <h4>Sets</h4>
+                      <button
+                        type='button'
+                        onClick={() => addSet(ex.exerciseId)}
+                        className='add-set-btn'
+                      >
+                        + Add Set
+                      </button>
+                    </div>
+                    {sets.map((set, idx) => (
+                      <div
+                        key={idx}
+                        className={`set-input-row ${isBodyweight ? 'bodyweight-set' : ''}`}
+                      >
+                        <div className='set-input-number'>Set {idx + 1}</div>
+                        {!isBodyweight && (
+                          <label>
+                            Weight (
+                            {isPerHand
+                              ? `${getWeightUnitLabel(weightUnit)} per dumbbell`
+                              : getWeightUnitLabel(weightUnit)}
+                            )
+                            <input
+                              type='number'
+                              min='0'
+                              step={getWeightStep(weightUnit)}
+                              value={set.weight}
+                              onChange={(e) =>
+                                updateSet(
+                                  ex.exerciseId,
+                                  idx,
+                                  'weight',
+                                  e.target.value,
+                                )
+                              }
+                              placeholder={
+                                weightUnit === 'kg' ? 'e.g. 60' : 'e.g. 135'
+                              }
+                            />
+                          </label>
+                        )}
+                        <label>
+                          Reps
+                          <input
+                            type='number'
+                            min='0'
+                            step='1'
+                            value={set.reps}
+                            onChange={(e) =>
+                              updateSet(
+                                ex.exerciseId,
+                                idx,
+                                'reps',
+                                e.target.value,
+                              )
+                            }
+                            placeholder='e.g. 8'
+                          />
+                        </label>
+                        {sets.length > 1 && (
+                          <button
+                            type='button'
+                            onClick={() => removeSet(ex.exerciseId, idx)}
+                            className='remove-set-btn'
+                            title='Remove set'
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className='add-past-workout-actions'>
+            <button
+              type='button'
+              onClick={handleCancelEdit}
+              className='ghost-btn'
+            >
+              Cancel
+            </button>
+            <button
+              type='submit'
+              disabled={adding}
+              className='primary-btn add-past-workout-btn'
+            >
+              {adding ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+          {message && (
+            <div
+              className={`add-past-workout-message ${message.includes('updated') || message.includes('reflect') ? '' : 'add-past-workout-message--error'}`}
+            >
+              {message}
+            </div>
+          )}
+        </form>
+      ) : addStep === 'date' ? (
         <form className='add-past-workout-form' onSubmit={goToExercises}>
           <h3 className='add-past-workout-title'>Add past workout</h3>
           <div className='add-past-workout-fields'>
@@ -702,13 +1019,22 @@ export default function History({
                     })}
                   </h2>
                   {!isConfirming ? (
-                    <button
-                      type='button'
-                      onClick={() => setDeleteConfirmingKey(deleteKey)}
-                      className='history-delete-btn'
-                    >
-                      Delete
-                    </button>
+                    <div className='history-card-actions'>
+                      <button
+                        type='button'
+                        onClick={() => handleStartEdit(w)}
+                        className='history-btn'
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type='button'
+                        onClick={() => setDeleteConfirmingKey(deleteKey)}
+                        className='history-delete-btn'
+                      >
+                        Delete
+                      </button>
+                    </div>
                   ) : (
                     <div className='history-delete-confirm'>
                       <span className='history-delete-confirm-text'>

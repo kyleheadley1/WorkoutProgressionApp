@@ -202,6 +202,37 @@ export function addSavedUserExercise(exerciseId, name) {
   }
 }
 
+/** Update an existing session (same userId, date, dayType). Replaces in place for trends. */
+export function updateSession(userId, date, dayType, updatedSession) {
+  const list = readAll();
+  const dateKey = new Date(date).toISOString().slice(0, 10);
+  const normalized = normalizeSession({
+    ...updatedSession,
+    userId,
+    date: updatedSession.date || date,
+    dayType: updatedSession.dayType ?? dayType,
+    type: updatedSession.type ?? updatedSession.dayType ?? dayType,
+  });
+  let found = false;
+  const next = list.map((session) => {
+    if (session.userId !== userId) return session;
+    const sessionDate = new Date(session.date);
+    const sessionKey = Number.isNaN(sessionDate.getTime())
+      ? ''
+      : sessionDate.toISOString().slice(0, 10);
+    if (
+      sessionKey === dateKey &&
+      (session.dayType || session.type) === dayType
+    ) {
+      found = true;
+      return normalized;
+    }
+    return session;
+  });
+  if (found) writeAll(next);
+  return normalized;
+}
+
 /** Delete an entire workout session from local storage by date and day type. */
 export function deleteSession(userId, date, dayType) {
   const list = readAll();
