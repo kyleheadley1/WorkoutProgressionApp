@@ -1,7 +1,13 @@
 // src/components/History.jsx
 import React, { useEffect, useState, useCallback } from 'react';
 import { getFriendlyName, canonicalizeExerciseId } from '../lib/aliases';
-import { readSessions, saveSession, deleteSession } from '../lib/storage';
+import {
+  readSessions,
+  saveSession,
+  deleteSession,
+  getSavedUserExercises,
+  addSavedUserExercise,
+} from '../lib/storage';
 import { api } from '../lib/api';
 import { enqueueSession } from '../lib/offlineQueue';
 import {
@@ -29,8 +35,6 @@ const DAY_TYPES = [
 ];
 
 const PER_HAND_EXERCISES = new Set(['dumbbellBenchPress', 'trapBarDeadlift']);
-
-const ALL_STORED_DEFS = getAllExerciseDefs();
 
 /** Convert display name to a normal exerciseId (camelCase), e.g. "Barbell Bench Press" -> "barbellBenchPress" */
 function displayNameToExerciseId(displayName) {
@@ -88,6 +92,24 @@ export default function History({
   const [adding, setAdding] = useState(false);
   const [message, setMessage] = useState('');
   const [deleteConfirmingKey, setDeleteConfirmingKey] = useState(null);
+  const [userExercisesVersion, setUserExercisesVersion] = useState(0);
+
+  // Recompute when user adds a custom exercise so dropdown updates
+  const allStoredDefs = React.useMemo(() => {
+    const builtIn = getAllExerciseDefs();
+    const ids = new Set(builtIn.map((d) => d.exerciseId));
+    const user = getSavedUserExercises().filter(
+      (d) => !ids.has(canonicalizeExerciseId(d.exerciseId)),
+    );
+    return [...builtIn, ...user];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- userExercisesVersion triggers refresh when custom exercise is saved
+  }, [userExercisesVersion]);
+
+  const getDefFromStored = useCallback(
+    (exerciseId) =>
+      allStoredDefs.find((d) => d.exerciseId === exerciseId) || null,
+    [allStoredDefs],
+  );
 
   const loadWorkouts = useCallback(() => {
     const local = readSessions(userId);
@@ -116,6 +138,34 @@ export default function History({
   useEffect(() => {
     loadWorkouts();
   }, [loadWorkouts]);
+
+  // Backfill user exercises from history so legacy "custom-*" and past custom entries appear in dropdown
+  useEffect(() => {
+    if (!workouts.length) return;
+    const builtInIds = new Set(getAllExerciseDefs().map((d) => d.exerciseId));
+    const existingUser = getSavedUserExercises();
+    const existingIds = new Set(
+      existingUser.map((e) => canonicalizeExerciseId(e.exerciseId)),
+    );
+    let added = false;
+    workouts.forEach((w) => {
+      (w.exercises || []).forEach((ex) => {
+        const canon = canonicalizeExerciseId(ex.exerciseId);
+        const isLegacyCustom =
+          (ex.exerciseId && ex.exerciseId.startsWith('custom-')) ||
+          !builtInIds.has(canon);
+        if (isLegacyCustom && !existingIds.has(canon)) {
+          addSavedUserExercise(
+            canon,
+            ex.name || getFriendlyName(ex.exerciseId),
+          );
+          existingIds.add(canon);
+          added = true;
+        }
+      });
+    });
+    if (added) setUserExercisesVersion((v) => v + 1);
+  }, [workouts]);
 
   const goToExercises = (e) => {
     e.preventDefault();
@@ -194,7 +244,7 @@ export default function History({
 
   const predictiveMatches = filterExercisesByQuery(
     addExerciseQuery,
-    ALL_STORED_DEFS,
+    allStoredDefs,
     8,
   );
 
@@ -203,12 +253,12 @@ export default function History({
     if (!query) return;
     setMessage('');
     setSimilarSuggestion(null);
-    const exact = findExactExercise(query, ALL_STORED_DEFS);
+    const exact = findExactExercise(query, allStoredDefs);
     if (exact) {
       addExerciseByDef(exact);
       return;
     }
-    const similar = findSimilarExercise(query, ALL_STORED_DEFS);
+    const similar = findSimilarExercise(query, allStoredDefs);
     if (similar) {
       setSimilarSuggestion({
         exerciseId: similar.exerciseId,
@@ -282,6 +332,12 @@ export default function History({
       };
       if (ex.name) payload.name = ex.name;
       exercises.push(payload);
+      if (!getDefByExerciseId(canonicalizeExerciseId(ex.exerciseId))) {
+        addSavedUserExercise(
+          canonicalizeExerciseId(ex.exerciseId),
+          ex.name || getFriendlyName(ex.exerciseId),
+        );
+      }
     }
 
     if (exercises.length === 0) {
@@ -310,10 +366,12 @@ export default function History({
       setAddStep('date');
       setAddedExercises([]);
       setSimilarSuggestion(null);
+      setUserExercisesVersion((v) => v + 1);
       loadWorkouts();
     } catch {
       enqueueSession(session);
       setMessage('Saved locally — will sync when online.');
+      setUserExercisesVersion((v) => v + 1);
       loadWorkouts();
     } finally {
       setAdding(false);
@@ -386,14 +444,14 @@ export default function History({
                   onChange={(e) => {
                     const id = e.target.value;
                     if (!id) return;
-                    const def = getDefByExerciseId(id);
+                    const def = getDefFromStored(id);
                     addExerciseByDef(def);
                     e.target.value = '';
                   }}
                   className='add-past-workout-select add-exercise-select'
                 >
                   <option value=''>Choose an exercise…</option>
-                  {ALL_STORED_DEFS.map((d) => (
+                  {allStoredDefs.map((d) => (
                     <option key={d.exerciseId} value={d.exerciseId}>
                       {d.name}
                     </option>
@@ -455,9 +513,7 @@ export default function History({
                 <button
                   type='button'
                   onClick={() => {
-                    const def = getDefByExerciseId(
-                      similarSuggestion.exerciseId,
-                    );
+                    const def = getDefFromStored(similarSuggestion.exerciseId);
                     addExerciseByDef(def);
                   }}
                   className='primary-btn add-exercise-use-btn'

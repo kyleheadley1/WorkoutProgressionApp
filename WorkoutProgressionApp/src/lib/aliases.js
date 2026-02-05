@@ -52,8 +52,21 @@ export function canonicalizeExerciseId(exerciseId) {
   return EXERCISE_ID_ALIASES[exerciseId] || exerciseId;
 }
 
+/** Convert legacy "custom-slug-name" id to display name, e.g. "Barbell Bench Press" */
+function customSlugToDisplayName(exerciseId) {
+  if (!exerciseId || !exerciseId.startsWith('custom-')) return null;
+  const slug = exerciseId.slice(7).trim();
+  if (!slug) return null;
+  return slug
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
 export function getFriendlyName(exerciseId) {
   const canon = canonicalizeExerciseId(exerciseId);
+  const customName = customSlugToDisplayName(canon);
+  if (customName) return customName;
   return FRIENDLY_NAME[canon] || canon;
 }
 

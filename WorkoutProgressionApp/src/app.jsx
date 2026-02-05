@@ -113,19 +113,12 @@ function AppContent() {
           </div>
         </div>
         {/* ✅ INSERT THE DEV PANEL RIGHT BELOW THIS LINE */}
-        <div
-          style={{
-            margin: '12px 0',
-            padding: '10px',
-            background: '#f6f7f8',
-            borderRadius: 10,
-          }}
-        >
+        <div className='dev-panel'>
           <strong>Dev panel</strong>{' '}
           <select
+            className='dev-select'
             value={override ?? ''}
             onChange={(e) => setOverride(e.target.value || null)}
-            style={{ marginLeft: 8 }}
           >
             <option value=''>Auto</option>
             <option value='push'>Push</option>
@@ -137,7 +130,8 @@ function AppContent() {
             <option value='rest'>Rest</option>
           </select>
           <button
-            style={{ marginLeft: 8 }}
+            type='button'
+            className='dev-btn'
             onClick={() => {
               seedExample(userId);
               alert('Seeded a few local sessions.');
@@ -146,7 +140,8 @@ function AppContent() {
             Seed local
           </button>
           <button
-            style={{ marginLeft: 8 }}
+            type='button'
+            className='dev-btn'
             onClick={async () => {
               const n = await syncLocalToServer();
               alert(`Synced ${n} local sessions to server.`);

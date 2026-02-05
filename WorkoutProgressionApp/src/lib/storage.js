@@ -1,5 +1,6 @@
 // src/lib/storage.js
 const KEY = 'wp_sessions_v1';
+const USER_EXERCISES_KEY = 'wp_userExercises_v1';
 import { canonicalizeExerciseId } from './aliases';
 
 function normalizeSession(session) {
@@ -164,6 +165,41 @@ export function deleteExerciseSession(userId, exerciseId, dateKey) {
     // Otherwise drop the session entirely.
   });
   writeAll(next);
+}
+
+/** User-added exercise names for dropdown/suggestions when adding past workouts. */
+export function getSavedUserExercises() {
+  try {
+    const raw =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem(USER_EXERCISES_KEY)
+        : null;
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addSavedUserExercise(exerciseId, name) {
+  if (!exerciseId || !name) return;
+  const list = getSavedUserExercises();
+  const canon = canonicalizeExerciseId(exerciseId);
+  const existing = list.find(
+    (e) => canonicalizeExerciseId(e.exerciseId) === canon,
+  );
+  if (existing) {
+    existing.name = name;
+  } else {
+    list.push({ exerciseId: canon, name: name.trim() });
+  }
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(USER_EXERCISES_KEY, JSON.stringify(list));
+    }
+  } catch (err) {
+    console.error('Error saving user exercise:', err);
+  }
 }
 
 /** Delete an entire workout session from local storage by date and day type. */
