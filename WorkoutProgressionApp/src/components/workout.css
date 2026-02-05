@@ -356,6 +356,68 @@ h2 {
   color: #2a7a36;
 }
 
+.add-past-workout-message--error {
+  color: #c0392b;
+}
+
+/* Add past workout — step 2: exercises & sets */
+.add-past-workout-form--exercises {
+  padding: 24px;
+}
+
+.add-past-workout-exercises-header {
+  margin-bottom: 20px;
+}
+
+.add-past-workout-subtitle {
+  margin: 8px 0 0 0;
+  font-size: 14px;
+  color: #555;
+  font-weight: 500;
+}
+
+.add-past-workout-exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.add-past-workout-exercise-block {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.add-past-workout-exercise-name {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1d29;
+}
+
+.add-past-workout-exercise-block .sets-input-section {
+  margin-top: 8px;
+}
+
+.add-past-workout-exercise-block .set-input-row {
+  margin-bottom: 8px;
+}
+
+.add-past-workout-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.add-past-workout-actions .add-past-workout-btn {
+  margin: 0;
+}
+
 .history-no-exercises {
   font-size: 13px;
   color: #888;
