@@ -296,6 +296,73 @@ h2 {
   line-height: 1.4;
 }
 
+/* Add past workout form on History screen */
+.add-past-workout-form {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.add-past-workout-title {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1d29;
+}
+
+.add-past-workout-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.add-past-workout-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+}
+
+.add-past-workout-input,
+.add-past-workout-select {
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 160px;
+}
+
+.add-past-workout-input:focus,
+.add-past-workout-select:focus {
+  outline: none;
+  border-color: #ff4d61;
+}
+
+.add-past-workout-btn {
+  margin: 0;
+}
+
+.add-past-workout-message {
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2a7a36;
+}
+
+.history-no-exercises {
+  font-size: 13px;
+  color: #888;
+  font-style: italic;
+  padding: 8px 0;
+}
+
 .exercise-history {
   background: #f8f9fa;
   min-height: calc(100vh - 200px);
