@@ -192,6 +192,7 @@ export default function History({
         name: def.name,
         modality: def.modality,
         sets: getDefaultSetsForDef(def),
+        manuallyEditedSetIndices: {},
       },
     ]);
     setAddExerciseQuery('');
@@ -207,26 +208,35 @@ export default function History({
 
   const updateSet = (exerciseId, setIndex, field, value) => {
     setAddedExercises((prev) =>
-      prev.map((e) =>
-        e.exerciseId === exerciseId
-          ? {
-              ...e,
-              sets: e.sets.map((s, i) =>
-                i === setIndex ? { ...s, [field]: value } : s,
-              ),
-            }
-          : e,
-      ),
+      prev.map((e) => {
+        if (e.exerciseId !== exerciseId) return e;
+        const edited = e.manuallyEditedSetIndices || {};
+        const sets = e.sets.map((s, i) =>
+          i === setIndex ? { ...s, [field]: value } : s,
+        );
+        const source = sets[setIndex];
+        const newEdited = { ...edited, [setIndex]: true };
+        const propagated = sets.map((s, i) => {
+          if (i <= setIndex) return s;
+          if (edited[i]) return s;
+          return { ...s, weight: source.weight, reps: source.reps };
+        });
+        return { ...e, sets: propagated, manuallyEditedSetIndices: newEdited };
+      }),
     );
   };
 
   const addSet = (exerciseId) => {
     setAddedExercises((prev) =>
-      prev.map((e) =>
-        e.exerciseId === exerciseId
-          ? { ...e, sets: [...e.sets, { weight: '', reps: '' }] }
-          : e,
-      ),
+      prev.map((e) => {
+        if (e.exerciseId !== exerciseId) return e;
+        const sets = e.sets || [{ weight: '', reps: '' }];
+        const last = sets[sets.length - 1];
+        return {
+          ...e,
+          sets: [...sets, { weight: last.weight, reps: last.reps }],
+        };
+      }),
     );
   };
 
@@ -234,9 +244,17 @@ export default function History({
     setAddedExercises((prev) =>
       prev.map((e) => {
         if (e.exerciseId !== exerciseId || e.sets.length <= 1) return e;
+        const edited = e.manuallyEditedSetIndices || {};
+        const newEdited = {};
+        Object.keys(edited).forEach((k) => {
+          const i = Number(k);
+          if (i < setIndex) newEdited[i] = true;
+          else if (i > setIndex) newEdited[i - 1] = true;
+        });
         return {
           ...e,
           sets: e.sets.filter((_, i) => i !== setIndex),
+          manuallyEditedSetIndices: newEdited,
         };
       }),
     );
