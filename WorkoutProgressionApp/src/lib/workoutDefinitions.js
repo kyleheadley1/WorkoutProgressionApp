@@ -280,9 +280,57 @@ export function getDefsForDayType(dayType) {
   return BY_DAY[key] || [];
 }
 
-/** Normalize for comparison: lowercase, single spaces. */
+/** Normalize for comparison: lowercase, single spaces, no punctuation. */
 function normalize(s) {
-  return (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+  return (s || '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[^\w\s]/g, ' ');
+}
+
+/** Modality terms that make exercises distinct (dumbbell ≠ barbell, etc.). */
+const MODALITY_TERMS = new Set([
+  'dumbbell',
+  'dumbell',
+  'db',
+  'barbell',
+  'bb',
+  'kettlebell',
+  'kb',
+  'cable',
+  'machine',
+  'band',
+  'ez',
+  'trap',
+  'bar',
+]);
+
+function getModalityWord(str) {
+  const words = normalize(str).split(/\s+/).filter(Boolean);
+  return words.find((w) => MODALITY_TERMS.has(w)) || null;
+}
+
+/** Levenshtein distance. */
+function levenshtein(a, b) {
+  const m = a.length;
+  const n = b.length;
+  const dp = Array(m + 1)
+    .fill(null)
+    .map(() => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost,
+      );
+    }
+  }
+  return dp[m][n];
 }
 
 /**
@@ -301,43 +349,41 @@ export function findExactExercise(query, allDefs) {
 }
 
 /**
- * Find a similar (but not exact) exercise to suggest "Did you mean X?".
- * Returns the best match if similarity is high enough.
+ * Find a similar exercise only when it looks like a misspelling (typo) of the same exercise.
+ * Does NOT suggest when the only difference is modality (e.g. dumbbell vs barbell).
  */
 export function findSimilarExercise(query, allDefs) {
   const q = normalize(query);
   if (!q || q.length < 2) return null;
   const exact = findExactExercise(query, allDefs);
-  if (exact) return null; // no "similar" if exact exists
+  if (exact) return null;
 
+  const queryModality = getModalityWord(query);
   let best = null;
   let bestScore = 0;
 
   for (const d of allDefs) {
     const name = normalize(d.name);
-    // Substring: typed is inside name or name is inside typed
-    if (name.includes(q) || q.includes(name)) {
-      const score =
-        Math.min(name.length, q.length) / Math.max(name.length, q.length);
-      if (score > bestScore) {
-        bestScore = score;
-        best = d;
-      }
+    const nameModality = getModalityWord(d.name);
+
+    // Don't suggest if they use different modality (dumbbell vs barbell = different exercise).
+    if (queryModality && nameModality && queryModality !== nameModality) {
+      continue;
     }
-    // Word overlap: majority of query words appear in name
-    const qWords = q.split(/\s+/).filter(Boolean);
-    const nameWords = new Set(name.split(/\s+/));
-    const matchCount = qWords.filter(
-      (w) => nameWords.has(w) || name.includes(w),
-    ).length;
-    const wordScore = matchCount / qWords.length;
-    if (wordScore >= 0.6 && wordScore > bestScore) {
-      bestScore = wordScore;
+
+    // Typo-style similarity: small edit distance relative to length.
+    const maxLen = Math.max(q.length, name.length);
+    const distance = levenshtein(q, name);
+    const ratio = distance / maxLen;
+    // Suggest only when very close (likely typo): e.g. 1–2 chars wrong in a short string.
+    const typoScore = 1 - ratio;
+    if (ratio <= 0.25 && typoScore > bestScore) {
+      bestScore = typoScore;
       best = d;
     }
   }
 
-  return bestScore >= 0.5 ? best : null;
+  return best;
 }
 
 /**
