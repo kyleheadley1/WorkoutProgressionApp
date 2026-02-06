@@ -14,6 +14,7 @@ import FullBody from './components/FullBody';
 import './components/workout.css';
 import { seedExample } from './lib/storage';
 import { recommendDayType } from './lib/scheduler';
+import { PRESETS, PRESET_OPTIONS } from './lib/workoutPresets';
 
 function Rest() {
   return <div className='rest-day'>Rest Day 😴</div>;
@@ -38,24 +39,62 @@ function AppContent() {
 
   useEffect(() => {
     seedExample(userId);
-    const rec = recommendDayType(userId, new Date());
+    const rec = recommendDayType(userId, new Date(), profile.scheduleType);
     setDayType(rec);
-  }, []);
+  }, [profile.scheduleType]);
+
+  const presetDefs = PRESETS[profile.exercisePreset] ?? PRESETS.jeffNippard;
 
   function renderByType(t) {
     switch (t) {
       case 'push':
-        return <Push userId={userId} onViewHistory={handleViewHistory} />;
+        return (
+          <Push
+            userId={userId}
+            onViewHistory={handleViewHistory}
+            defs={presetDefs.push}
+          />
+        );
       case 'pull':
-        return <Pull userId={userId} onViewHistory={handleViewHistory} />;
+        return (
+          <Pull
+            userId={userId}
+            onViewHistory={handleViewHistory}
+            defs={presetDefs.pull}
+          />
+        );
       case 'legs':
-        return <Legs userId={userId} onViewHistory={handleViewHistory} />;
+        return (
+          <Legs
+            userId={userId}
+            onViewHistory={handleViewHistory}
+            defs={presetDefs.legs}
+          />
+        );
       case 'upper':
-        return <Upper userId={userId} onViewHistory={handleViewHistory} />;
+        return (
+          <Upper
+            userId={userId}
+            onViewHistory={handleViewHistory}
+            defs={presetDefs.upper}
+          />
+        );
       case 'lower':
-        return <Lower userId={userId} onViewHistory={handleViewHistory} />;
+        return (
+          <Lower
+            userId={userId}
+            onViewHistory={handleViewHistory}
+            defs={presetDefs.lower}
+          />
+        );
       case 'full':
-        return <FullBody userId={userId} onViewHistory={handleViewHistory} />;
+        return (
+          <FullBody
+            userId={userId}
+            onViewHistory={handleViewHistory}
+            defs={presetDefs.full}
+          />
+        );
       case 'rest':
       default:
         return <Rest />;
@@ -168,12 +207,43 @@ function AppContent() {
                 renderByType(dayTypeUsed)
               )}
             </div>
-            <div className='relevant-stats-container'>
-              <h2>Schedule Logic</h2>
-              <p>
-                Sun = Rest (week resets). Mon/Tue/Wed = Push/Pull/Legs. Thu =
-                Rest. Fri = Upper. Sat = Lower, unless Upper was missed or
-                coverage &lt; 2 → Full.
+            <div className='relevant-stats-container schedule-preset-controls'>
+              <h2>Schedule &amp; Preset</h2>
+              <div className='schedule-preset-row'>
+                <label className='schedule-preset-label'>
+                  <span className='schedule-preset-name'>Schedule</span>
+                  <select
+                    value={profile.scheduleType}
+                    onChange={(e) =>
+                      setProfile({ scheduleType: e.target.value })
+                    }
+                    className='schedule-preset-select'
+                    aria-label='Schedule type'
+                  >
+                    <option value='ppl5x'>PPL 5x</option>
+                  </select>
+                </label>
+                <label className='schedule-preset-label'>
+                  <span className='schedule-preset-name'>Exercise preset</span>
+                  <select
+                    value={profile.exercisePreset}
+                    onChange={(e) =>
+                      setProfile({ exercisePreset: e.target.value })
+                    }
+                    className='schedule-preset-select'
+                    aria-label='Exercise preset'
+                  >
+                    {PRESET_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <p className='schedule-preset-desc'>
+                PPL 5x: Sun = Rest. Mon/Tue/Wed = Push/Pull/Legs. Thu = Rest.
+                Fri = Upper. Sat = Lower or Full if coverage &lt; 2.
               </p>
             </div>
           </div>

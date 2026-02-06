@@ -9,7 +9,7 @@ import { useToast } from './ToastProvider';
 import './workout.css';
 
 // User prefers rear delt raises instead of face pulls.
-const defs = [
+const defaultDefs = [
   {
     exerciseId: 'pullUps',
     name: 'Pull-ups',
@@ -57,7 +57,12 @@ const defs = [
   },
 ];
 
-export default function Pull({ userId = 'demoUser', onViewHistory }) {
+export default function Pull({
+  userId = 'demoUser',
+  onViewHistory,
+  defs: defsProp,
+}) {
+  const defs = defsProp ?? defaultDefs;
   const { items, loading } = useRecommendations(userId, defs);
   const [exerciseData, setExerciseData] = useState({});
   const [saving, setSaving] = useState(false);

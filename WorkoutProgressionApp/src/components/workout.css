@@ -214,6 +214,41 @@ body {
   line-height: 1.6;
 }
 
+.schedule-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.schedule-preset-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.schedule-preset-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+}
+
+.schedule-preset-select {
+  padding: 8px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 140px;
+  background: #fff;
+  color: #1a1d29;
+}
+
+.schedule-preset-desc {
+  margin-top: 4px;
+}
+
 h1,
 h2 {
   color: #1a1d29;

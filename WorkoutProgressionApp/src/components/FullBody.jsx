@@ -8,7 +8,7 @@ import { enqueueSession } from '../lib/offlineQueue';
 import { useToast } from './ToastProvider';
 import './workout.css';
 
-const defs = [
+const defaultDefs = [
   {
     exerciseId: 'trapBarDeadlift',
     name: 'Dumbbell Deadlift',
@@ -96,7 +96,13 @@ const defs = [
   },
 ];
 
-export default function FullBody({ userId = 'demoUser', onViewHistory, onWorkoutSaved }) {
+export default function FullBody({
+  userId = 'demoUser',
+  onViewHistory,
+  onWorkoutSaved,
+  defs: defsProp,
+}) {
+  const defs = defsProp ?? defaultDefs;
   const { items, loading } = useRecommendations(userId, defs);
   const [exerciseData, setExerciseData] = useState({});
   const [saving, setSaving] = useState(false);
@@ -122,7 +128,9 @@ export default function FullBody({ userId = 'demoUser', onViewHistory, onWorkout
       }));
 
     if (exercises.length === 0) {
-      toast.error('No exercises to save. Please fill in at least one exercise.');
+      toast.error(
+        'No exercises to save. Please fill in at least one exercise.',
+      );
       setSaving(false);
       return;
     }
@@ -187,4 +195,3 @@ export default function FullBody({ userId = 'demoUser', onViewHistory, onWorkout
     </div>
   );
 }
-

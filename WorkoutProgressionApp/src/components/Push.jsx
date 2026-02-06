@@ -9,8 +9,7 @@ import { useToast } from './ToastProvider';
 import '../components/workout.css';
 
 // Prefer rear delts only on pull days per user's preference, so no rear delts here.
-
-const defs = [
+const defaultDefs = [
   {
     exerciseId: 'dumbbellBenchPress',
     name: 'Dumbbell Bench Press',
@@ -76,7 +75,12 @@ const defs = [
   },
 ];
 
-export default function Push({ userId = 'demoUser', onViewHistory }) {
+export default function Push({
+  userId = 'demoUser',
+  onViewHistory,
+  defs: defsProp,
+}) {
+  const defs = defsProp ?? defaultDefs;
   const { items, loading } = useRecommendations(userId, defs);
   const [exerciseData, setExerciseData] = useState({});
   const [saving, setSaving] = useState(false);

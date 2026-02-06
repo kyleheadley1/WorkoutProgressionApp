@@ -7,6 +7,8 @@ const defaultProfile = {
   gender: 'male',
   bodyweight: 180,
   weightUnit: 'lb',
+  scheduleType: 'ppl5x',
+  exercisePreset: 'jeffNippard',
 };
 
 function loadProfile() {
@@ -20,6 +22,9 @@ function loadProfile() {
           gender: parsed.gender === 'female' ? 'female' : 'male',
           bodyweight: Number(parsed.bodyweight) || defaultProfile.bodyweight,
           weightUnit: parsed.weightUnit === 'kg' ? 'kg' : 'lb',
+          scheduleType: parsed.scheduleType || defaultProfile.scheduleType,
+          exercisePreset:
+            parsed.exercisePreset || defaultProfile.exercisePreset,
         };
       }
     }
